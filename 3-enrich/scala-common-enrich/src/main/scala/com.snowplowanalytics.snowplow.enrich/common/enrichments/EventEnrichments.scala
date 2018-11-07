@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2015 Snowplow Analytics Ltd. All rights reserved.
+ * Copyright (c) 2012-2018 Snowplow Analytics Ltd. All rights reserved.
  *
  * This program is licensed to you under the Apache License Version 2.0,
  * and you may not use this file except in compliance with the Apache License Version 2.0.
@@ -29,7 +29,7 @@ import org.joda.time.format.DateTimeFormat
 
 // This project
 import utils.{ConversionUtils => CU}
-import utils.{JsonUtils => JU}
+import utils.{JsonUtils       => JU}
 
 /**
  * Holds the enrichments related to events.
@@ -51,13 +51,13 @@ object EventEnrichments {
    */
   def toTimestamp(datetime: DateTime): String = TstampFormat.print(datetime)
 
-   /**
-    * Converts a Redshift-compatible timestamp String
-    * back into a Joda DateTime.
-    *
-    * @param timestamp The timestamp String to convert
-    * @return the Joda DateTime
-    */
+  /**
+   * Converts a Redshift-compatible timestamp String
+   * back into a Joda DateTime.
+   *
+   * @param timestamp The timestamp String to convert
+   * @return the Joda DateTime
+   */
   def fromTimestamp(timestamp: String): DateTime = TstampFormat.parseDateTime(timestamp)
 
   /**
@@ -66,19 +66,17 @@ object EventEnrichments {
    * @param Optional collectorTstamp
    * @return Validation boxing the result of making the timestamp Redshift-compatible
    */
-  def formatCollectorTstamp(collectorTstamp: Option[DateTime]): Validation[String, String] = {
+  def formatCollectorTstamp(collectorTstamp: Option[DateTime]): Validation[String, String] =
     collectorTstamp match {
       case None => "No collector_tstamp set".fail
-      case Some(t) => {
+      case Some(t) =>
         val formattedTimestamp = toTimestamp(t)
-        if (formattedTimestamp.startsWith("-")) {
-          s"Collector timestamp $formattedTimestamp is negative and will fail the Redshift load".fail
+        if (formattedTimestamp.startsWith("-") || t.getYear > 9999 || t.getYear < 0) {
+          s"Collector timestamp [${t.getMillis}] formatted as [$formattedTimestamp] which isn't Redshift-compatible".fail
         } else {
           formattedTimestamp.success
         }
-      }
     }
-  }
 
   /**
    * Calculate the derived timestamp
@@ -101,25 +99,25 @@ object EventEnrichments {
     dvceCreatedTstamp: Option[String],
     collectorTstamp: Option[String],
     trueTstamp: Option[String]
-    ): Validation[String, Option[String]] = trueTstamp match {
-      case Some(ttm) => Some(ttm).success
-      case None => try {
+  ): Validation[String, Option[String]] = trueTstamp match {
+    case Some(ttm) => Some(ttm).success
+    case None =>
+      try {
         ((dvceSentTstamp, dvceCreatedTstamp, collectorTstamp) match {
-          case (Some(dst), Some(dct), Some(ct)) => {
+          case (Some(dst), Some(dct), Some(ct)) =>
             val startTstamp = fromTimestamp(dct)
-            val endTstamp = fromTimestamp(dst)
+            val endTstamp   = fromTimestamp(dst)
             if (startTstamp.isBefore(endTstamp)) {
               toTimestamp(fromTimestamp(ct).minus(new Period(startTstamp, endTstamp))).some
             } else {
               ct.some
             }
-          }
           case _ => collectorTstamp
         }).success
       } catch {
         case NonFatal(e) => s"Exception calculating derived timestamp: [$e]".fail
       }
-    }
+  }
 
   /**
    * Extracts the timestamp from the
@@ -138,9 +136,9 @@ object EventEnrichments {
    */
   val extractTimestamp: (String, String) => ValidatedString = (field, tstamp) =>
     try {
-      val dt = new DateTime(tstamp.toLong)
+      val dt              = new DateTime(tstamp.toLong)
       val timestampString = toTimestamp(dt)
-      if (timestampString.startsWith("-")) {
+      if (timestampString.startsWith("-") || dt.getYear > 9999 || dt.getYear < 0) {
         s"Field [$field]: [$tstamp] is formatted as [$timestampString] which isn't Redshift-compatible".fail
       } else {
         timestampString.success
@@ -148,7 +146,7 @@ object EventEnrichments {
     } catch {
       case nfe: NumberFormatException =>
         "Field [%s]: [%s] is not in the expected format (ms since epoch)".format(field, tstamp).fail
-    }
+  }
 
   /**
    * Turns an event code into a valid event type,
@@ -165,18 +163,18 @@ object EventEnrichments {
   val extractEventType: (String, String) => ValidatedString = (field, code) =>
     code match {
       case "se" => "struct".success
-      case "ev" => "struct".success        // Leave in for legacy.
+      case "ev" => "struct".success // Leave in for legacy.
       case "ue" => "unstruct".success
       case "ad" => "ad_impression".success // Leave in for legacy.
       case "tr" => "transaction".success
       case "ti" => "transaction_item".success
       case "pv" => "page_view".success
       case "pp" => "page_ping".success
-      case  ec  => "Field [%s]: [%s] is not a recognised event code".format(field, ec).fail
-    }
+      case ec   => "Field [%s]: [%s] is not a recognised event code".format(field, ec).fail
+  }
 
   /**
-   * Returns a unique event ID. The event ID is 
+   * Returns a unique event ID. The event ID is
    * generated as a type 4 UUID, then converted
    * to a String.
    *

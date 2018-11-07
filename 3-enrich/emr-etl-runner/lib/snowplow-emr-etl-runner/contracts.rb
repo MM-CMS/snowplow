@@ -29,7 +29,7 @@ module Snowplow
 
     # The Hash containing assets for Hadoop.
     AssetsHash = ({
-      :enrich  => String,
+      :enrich  => Maybe[String],
       :shred   => String,
       :loader  => String,
       :elasticsearch => String
@@ -42,7 +42,8 @@ module Snowplow
       :skip => Maybe[ArrayOf[String]],
       :include => Maybe[ArrayOf[String]],
       :lock => Maybe[String],
-      :consul => Maybe[String]
+      :consul => Maybe[String],
+      :ignore_lock_on_start => Maybe[Bool]
       })
 
     # The Hash containing the buckets field from the configuration YAML
@@ -50,16 +51,18 @@ module Snowplow
       :assets => String,
       :jsonpath_assets => Maybe[String],
       :log => String,
-      :raw => ({
+      :encrypted => Bool,
+      :raw => Maybe[({
         :in => ArrayOf[String],
         :processing => String,
         :archive => String
-        }),
+        })],
       :enriched => ({
         :good => String,
-        :bad => String,
+        :bad => Maybe[String],
         :errors => Maybe[String],
-        :archive => Maybe[String]
+        :archive => Maybe[String],
+        :stream => Maybe[String]
         }),
       :shredded => ({
         :good => String,
@@ -67,22 +70,6 @@ module Snowplow
         :errors => Maybe[String],
         :archive => Maybe[String]
         })
-      })
-
-    # The Hash containing the storage targets to load
-    TargetHash = ({
-      :name => String,
-      :type => String,
-      :host => String,
-      :database => String,
-      :port => Num,
-      :ssl_mode => Maybe[String],
-      :table => String,
-      :username => Maybe[String],
-      :password => Maybe[String],
-      :es_nodes_wan_only => Maybe[Bool],
-      :maxerror => Maybe[Num],
-      :comprows => Maybe[Num]
       })
 
     # The Hash containing the configuration for a core instance using EBS.
@@ -110,6 +97,7 @@ module Snowplow
           :placement => Maybe[String],
           :ec2_subnet_id => Maybe[String],
           :ec2_key_name => String,
+          :security_configuration => Maybe[String],
           :bootstrap => Maybe[ArrayOf[String]],
           :software => ({
             :hbase => Maybe[String],
@@ -130,14 +118,14 @@ module Snowplow
           :configuration => Maybe[HashOf[Symbol, HashOf[Symbol, String]]]
           }),
         }),
-      :collectors => ({
+      :collectors => Maybe[({
         :format => String,
-        }),
+        })],
       :enrich => ({
-        :versions => ({
+        :versions => Maybe[({
           :spark_enrich => String
-          }),
-        :continue_on_unexpected_error => Bool,
+          })],
+        :continue_on_unexpected_error => Maybe[Bool],
         :output_compression => CompressionFormat
         }),
       :storage => ({
@@ -176,16 +164,31 @@ module Snowplow
         :ENRICHED_EVENTS => ArrayOf[Iglu::SelfDescribingJson]
     })
 
-    # archive_enriched can be either run as:
+    # archive_{enriched,shredded} can be either run as:
     # recover - without previous steps, archive latest run_id
     # pipeline - following the enrich and rdb_load, with known run_id
     # skip - don't archive
-    ArchiveEnrichedStep = C::Or['recover', 'pipeline', 'skip']
+    ArchiveStep = C::Or['recover', 'pipeline', 'skip']
 
     RdbLoaderSteps = ({
       :skip => ArrayOf[String],
       :include => ArrayOf[String]
     })
 
+    # Record of all possible steps that can be launched during EMR job
+    EmrSteps = ({
+      :staging => Bool,
+      :enrich => Bool,
+      :staging_stream_enrich => Bool,
+      :shred => Bool,
+      :es => Bool,
+      :archive_raw => Bool,
+      :rdb_load => Bool,
+      :consistency_check => Bool,
+      :load_manifest_check => Bool,
+      :analyze => Bool,
+      :archive_enriched => Bool,
+      :archive_shredded => Bool
+    })
   end
 end

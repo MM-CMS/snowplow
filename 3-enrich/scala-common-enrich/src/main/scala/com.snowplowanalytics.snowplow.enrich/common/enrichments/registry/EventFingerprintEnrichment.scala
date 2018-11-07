@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2015 Snowplow Analytics Ltd. All rights reserved.
+ * Copyright (c) 2012-2018 Snowplow Analytics Ltd. All rights reserved.
  *
  * This program is licensed to you under the Apache License Version 2.0,
  * and you may not use this file except in compliance with the Apache License Version 2.0.
@@ -32,10 +32,7 @@ import org.json4s._
 import org.json4s.jackson.JsonMethods
 
 // Iglu
-import iglu.client.{
-  SchemaCriterion,
-  SchemaKey
-}
+import iglu.client.{SchemaCriterion, SchemaKey}
 import iglu.client.validation.ProcessingMessageMethods._
 
 // This project
@@ -46,7 +43,10 @@ import utils.ScalazJson4sUtils
  */
 object EventFingerprintEnrichmentConfig extends ParseableEnrichment {
 
-  val supportedSchema = SchemaCriterion("com.snowplowanalytics.snowplow", "event_fingerprint_config", "jsonschema", 1, 0)
+  implicit val formats = DefaultFormats
+
+  val supportedSchema =
+    SchemaCriterion("com.snowplowanalytics.snowplow", "event_fingerprint_config", "jsonschema", 1, 0)
 
   /**
    * Creates an EventFingerprintEnrichment instance from a JValue.
@@ -56,15 +56,14 @@ object EventFingerprintEnrichmentConfig extends ParseableEnrichment {
    *        Must be a supported SchemaKey for this enrichment
    * @return a configured EventFingerprintEnrichment instance
    */
-  def parse(config: JValue, schemaKey: SchemaKey): ValidatedNelMessage[EventFingerprintEnrichment] = {
-    isParseable(config, schemaKey).flatMap( conf => {
+  def parse(config: JValue, schemaKey: SchemaKey): ValidatedNelMessage[EventFingerprintEnrichment] =
+    isParseable(config, schemaKey).flatMap(conf => {
       (for {
         excludedParameters <- ScalazJson4sUtils.extract[List[String]](config, "parameters", "excludeParameters")
         algorithmName      <- ScalazJson4sUtils.extract[String](config, "parameters", "hashAlgorithm")
         algorithm          <- getAlgorithm(algorithmName)
       } yield EventFingerprintEnrichment(algorithm, excludedParameters)).toValidationNel
     })
-  }
 
   /**
    * Look up the fingerprinting algorithm by name
@@ -93,9 +92,8 @@ object EventFingerprintEnrichment {
  * @param excludedParameters List of querystring parameters to exclude from the calculation
  * @return Event fingerprint
  */
-case class EventFingerprintEnrichment(algorithm: String => String, excludedParameters: List[String]) extends Enrichment {
-
-  val version = new DefaultArtifactVersion("0.1.0")
+case class EventFingerprintEnrichment(algorithm: String => String, excludedParameters: List[String])
+    extends Enrichment {
 
   /**
    * Calculate an event fingerprint using all querystring fields except the excludedParameters
@@ -104,14 +102,15 @@ case class EventFingerprintEnrichment(algorithm: String => String, excludedParam
    * @return Event fingerprint
    */
   def getEventFingerprint(parameterMap: Map[String, String]): String = {
-     val builder = new StringBuilder
-     parameterMap.toList.sortWith(_._1 < _._1).foreach {
-      case (key, value) => if (! excludedParameters.contains(key)) {
-        builder.append(key)
-        builder.append(EventFingerprintEnrichment.UnitSeparator)
-        builder.append(value)
-        builder.append(EventFingerprintEnrichment.UnitSeparator)
-      }
+    val builder = new StringBuilder
+    parameterMap.toList.sortWith(_._1 < _._1).foreach {
+      case (key, value) =>
+        if (!excludedParameters.contains(key)) {
+          builder.append(key)
+          builder.append(EventFingerprintEnrichment.UnitSeparator)
+          builder.append(value)
+          builder.append(EventFingerprintEnrichment.UnitSeparator)
+        }
     }
     algorithm(builder.toString)
   }

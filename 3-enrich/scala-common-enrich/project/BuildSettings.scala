@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2015 Snowplow Analytics Ltd. All rights reserved.
+ * Copyright (c) 2012-2018 Snowplow Analytics Ltd. All rights reserved.
  *
  * This program is licensed to you under the Apache License Version 2.0,
  * and you may not use this file except in compliance with the
@@ -22,13 +22,16 @@ import Keys._
 import bintray.BintrayPlugin._
 import bintray.BintrayKeys._
 
+// Scalafmt plugin
+import com.lucidchart.sbt.scalafmt.ScalafmtPlugin._
+import com.lucidchart.sbt.scalafmt.ScalafmtCorePlugin.autoImport._
+
 object BuildSettings {
 
   // Basic settings for our app
   lazy val basicSettings = Seq(
     organization          :=  "com.snowplowanalytics",
     scalaVersion          :=  "2.11.11",
-    crossScalaVersions    :=  Seq("2.10.6", "2.11.11"),
     scalacOptions         :=  compilerOptions,
     scalacOptions in Test :=  Seq("-Yrangepos"),
     javacOptions          :=  javaCompilerOptions,
@@ -93,5 +96,11 @@ object BuildSettings {
           <organizationUrl>http://snowplowanalytics.com</organizationUrl>
         </developer>
       </developers>)
+  )
+
+  lazy val formatting = Seq(
+    scalafmtConfig    := file(".scalafmt.conf"),
+    scalafmtOnCompile := true,
+    scalafmtVersion   := "1.3.0"
   )
 }

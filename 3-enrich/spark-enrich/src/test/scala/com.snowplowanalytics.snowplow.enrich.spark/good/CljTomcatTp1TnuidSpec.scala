@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2017 Snowplow Analytics Ltd. All rights reserved.
+ * Copyright (c) 2012-2018 Snowplow Analytics Ltd. All rights reserved.
  *
  * This program is licensed to you under the Apache License Version 2.0,
  * and you may not use this file except in compliance with the Apache License Version 2.0.
@@ -36,7 +36,7 @@ object CljTomcatTp1TnuidSpec {
     "clj-0.5.0-tom-0.0.4",
     etlVersion,
     null, // No user_id set
-    "255.255.x.x",
+    "79398dd7e78a8998b6e58e380e7168d8766f1644",
     "812263905",
     "d159c05f2aa8e1b9",
     "1",
@@ -63,7 +63,7 @@ object CljTomcatTp1TnuidSpec {
     null,
     "https",
     "www.google.co.uk",
-    "80",
+    "443",
     "/url",
     "sa=t&rct=j&q=&esrc=s&source=web&cd=3&ved=0CDsQFjAC&url=http%3A%2F%2Fsnowplowanalytics.com%2Fblog%2F2012%2F10%2F31%2Fsnowplow-in-a-universal-analytics-world-what-the-new-version-of-google-analytics-means-for-companies-adopting-snowplow%2F&ei=uQ9TUonxBcLL0QXc74DoDg&usg=AFQjCNFWhV4rr2zmRm1fe4hNiay6Td9VrA&bvm=bv.53537100,d.d2k",
     null,
@@ -140,7 +140,7 @@ class CljTomcatTp1TnuidSpec extends Specification with EnrichJobSpec {
   override def appName = "clj-tomcat-tp1-nuid-event"
   sequential
   "A job which processes a Clojure-Tomcat file containing a GET raw event representing 1 valid " +
-  "page view" should {
+    "page view" should {
     runEnrichJob(CljTomcatTp1TnuidSpec.lines, "clj-tomcat", "2", true, List("geo"))
 
     "correctly output 1 page ping" in {

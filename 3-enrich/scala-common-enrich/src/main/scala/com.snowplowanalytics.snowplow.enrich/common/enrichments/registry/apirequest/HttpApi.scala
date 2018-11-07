@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2016 Snowplow Analytics Ltd. All rights reserved.
+ * Copyright (c) 2012-2018 Snowplow Analytics Ltd. All rights reserved.
  *
  * This program is licensed to you under the Apache License Version 2.0,
  * and you may not use this file except in compliance with the Apache License Version 2.0.
@@ -39,12 +39,12 @@ case class HttpApi(method: String, uri: String, timeout: Int, authentication: Au
 
   private val authUser = for {
     httpBasic <- authentication.httpBasic
-    user <- httpBasic.username
+    user      <- httpBasic.username
   } yield user
 
   private val authPassword = for {
     httpBasic <- authentication.httpBasic
-    password <- httpBasic.password
+    password  <- httpBasic.password
   } yield password
 
   /**
@@ -55,11 +55,9 @@ case class HttpApi(method: String, uri: String, timeout: Int, authentication: Au
    * @param url URL to query
    * @return self-describing JSON ready to be attached to event contexts
    */
-  def perform(client: HttpClient, url: String): Validation[Throwable, String] = {
-    for {
-      request <- client.buildRequest(url, authUser = authUser, authPassword = authPassword, method)
-      response <- client.getBody(request, timeout)
-    } yield response
+  def perform(url: String): Validation[Throwable, String] = {
+    val req = HttpClient.buildRequest(url, authUser = authUser, authPassword = authPassword, method)
+    HttpClient.getBody(req)
   }
 
   /**
@@ -72,7 +70,7 @@ case class HttpApi(method: String, uri: String, timeout: Int, authentication: Au
    */
   private[apirequest] def buildUrl(context: Map[String, String]): Option[String] = {
     val encodedContext = context.map { case (k, v) => (k, URLEncoder.encode(v, "UTF-8")) }
-    val url = encodedContext.toList.foldLeft(uri)(replace)
+    val url            = encodedContext.toList.foldLeft(uri)(replace)
     everythingMatched(url).option(url)
   }
 }

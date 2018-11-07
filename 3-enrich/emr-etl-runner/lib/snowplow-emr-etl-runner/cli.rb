@@ -32,8 +32,8 @@ module Snowplow
 
       # Supported options
       COLLECTOR_FORMAT_REGEX = /^(?:cloudfront|clj-tomcat|thrift|(?:json\/.+\/.+)|(?:tsv\/.+\/.+)|(?:ndjson\/.+\/.+))$/
-      RESUMABLES = Set.new(%w(enrich shred elasticsearch archive_raw rdb_load analyze archive_enriched))
-      SKIPPABLES = Set.new(%w(staging enrich shred elasticsearch archive_raw rdb_load analyze archive_enriched))
+      RESUMABLES = Set.new(%w(enrich shred elasticsearch archive_raw rdb_load analyze archive_enriched archive_shredded staging_stream_enrich))
+      SKIPPABLES = Set.new(%w(staging enrich shred elasticsearch archive_raw rdb_load consistency_check analyze load_manifest_check archive_enriched archive_shredded staging_stream_enrich))
       INCLUDES = Set.new(%w(vacuum))
 
       # Get our arguments, configuration,
@@ -56,7 +56,8 @@ module Snowplow
         options = {
           :debug => false,
           :skip => [],
-          :include => []
+          :include => [],
+          :ignore_lock_on_start => false,
         }
 
         commands = {
@@ -72,6 +73,7 @@ module Snowplow
             opts.on('-x', "--skip {#{SKIPPABLES.to_a.join(',')}}", Array, 'skip the specified step(s)') { |config| options[:skip] = config }
             opts.on('-i', "--include {#{INCLUDES.to_a.join(',')}}", Array, 'include additional step(s)') { |config| options[:include] = config }
             opts.on('-l', '--lock PATH', 'where to store the lock') { |config| options[:lock] = config }
+            opts.on('--ignore-lock-on-start', 'ignore the lock if it is set when starting') { |config| options[:ignore_lock_on_start] = true }
             opts.on('--consul ADDRESS', 'address to the Consul server') { |config| options[:consul] = config }
           end,
           'generate emr-config' => OptionParser.new do |opts|
@@ -183,6 +185,7 @@ module Snowplow
           :resume_from => options[:resume_from],
           :include => options[:include],
           :lock => options[:lock],
+          :ignore_lock_on_start => options[:ignore_lock_on_start],
           :consul => options[:consul]
         }
 
@@ -260,15 +263,26 @@ module Snowplow
       # Load configuration from JSONs
       Contract Maybe[String] => ArrayOf[JsonFileHash]
       def self.load_targets(targets_path)
-        if targets_path.nil?
+        ids = []
+        targets = if targets_path.nil?
           []
         else
           Dir.entries(targets_path).select do |f|
             f.end_with?('.json')
           end.map do |f|
-            {:file => f, :json => JSON.parse(File.read(targets_path + '/' + f), {:symbolize_names => true}) }
+            json = JSON.parse(File.read(targets_path + '/' + f), {:symbolize_names => true})
+            id = json.dig(:data, :id)
+            unless id.nil?
+              ids.push(id)
+            end
+            {:file => f, :json => json}
           end
         end
+        duplicate_ids = ids.select { |id| ids.count(id) > 1 }.uniq
+        unless duplicate_ids.empty?
+          raise ConfigError, "Duplicate storage target ids: #{duplicate_ids}"
+        end
+        targets
       end
 
       # Adds trailing slashes to all non-nil bucket names in the hash
@@ -290,7 +304,7 @@ module Snowplow
 
         unless args[:resume_from].nil?
           unless RESUMABLES.include?(args[:resume_from])
-            raise ConfigError, "Invalid option: resume-from can be #{RESUMABLES.to_a.join(', ')}, not '#{args[:resume_from]}'"
+            raise ConfigError, "Invalid option: resume-from can be #{RESUMABLES.to_a.join(', ')} not '#{args[:resume_from]}'"
           end
         end
 
@@ -304,16 +318,31 @@ module Snowplow
           raise ConfigError, 'resume-from and skip are mutually exclusive'
         end
 
+        if args[:resume_from] == "staging_stream_enrich" && config.dig(:aws, :s3, :buckets, :enriched, :stream).nil?
+          raise ConfigError, 'staging_stream_enrich is invalid step to resume from without aws.s3.buckets.enriched.stream settings'
+        end
+        unless config.dig(:aws, :s3, :buckets, :enriched, :stream).nil?
+          if args[:resume_from] == "enrich"
+            raise ConfigError, 'cannot resume from enrich in stream enrich mode'
+          end
+          if args[:skip].include?('staging') || args[:skip].include?('enrich')
+            raise ConfigError, 'cannot skip staging nor enrich in stream enrich mode. Either skip staging_stream_enrich or resume from shred'
+          end
+          if args[:skip].include?('archive_raw') || args[:resume_from] == "archive_raw"
+              raise ConfigError, 'cannot skip nor resume from archive_raw in stream enrich mode'
+          end
+        end
+
         args[:include].each { |opt|
           unless INCLUDES.include?(opt)
             raise ConfigError, "Invalid option: include can be #{INCLUDES.to_a.join(', ')} not '#{opt}'"
           end
         }
 
-        collector_format = config[:collectors][:format]
+        collector_format = config.dig(:collectors, :format)
 
         # Validate the collector format
-        unless collector_format =~ COLLECTOR_FORMAT_REGEX
+        unless collector_format.nil? || collector_format =~ COLLECTOR_FORMAT_REGEX
           raise ConfigError, "collector_format '%s' not supported" % collector_format
         end
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2017 Snowplow Analytics Ltd. All rights reserved.
+ * Copyright (c) 2012-2018 Snowplow Analytics Ltd. All rights reserved.
  *
  * This program is licensed to you under the Apache License Version 2.0,
  * and you may not use this file except in compliance with the Apache License Version 2.0.
@@ -24,7 +24,7 @@ import org.specs2.specification.Step
  * TODO: To remove once specs2 has been updated.
  */
 trait BeforeAfterAll extends SpecificationLike {
-  override def map(fragments: =>Fragments) =
+  override def map(fragments: => Fragments) =
     Step(beforeAll) ^ fragments ^ Step(afterAll)
 
   def beforeAll(): Unit

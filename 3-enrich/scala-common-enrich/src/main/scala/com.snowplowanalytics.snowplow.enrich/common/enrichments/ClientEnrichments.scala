@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2014 Snowplow Analytics Ltd. All rights reserved.
+ * Copyright (c) 2012-2018 Snowplow Analytics Ltd. All rights reserved.
  *
  * This program is licensed to you under the Apache License Version 2.0,
  * and you may not use this file except in compliance with the Apache License Version 2.0.
@@ -32,7 +32,7 @@ import Scalaz._
  * Enrichments relate to browser resolution
  */
 object ClientEnrichments {
-  
+
   /**
    * The Tracker Protocol's pattern
    * for a screen resolution - for
@@ -66,6 +66,6 @@ object ClientEnrichments {
           case NonFatal(e) => "Field [%s]: view dimensions [%s] exceed Integer's max range".format(field, res).fail
         }
       case _ => "Field [%s]: [%s] does not contain valid view dimensions".format(field, res).fail
-    }
+  }
 
 }

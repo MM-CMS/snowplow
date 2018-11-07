@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2016 Snowplow Analytics Ltd. All rights reserved.
+ * Copyright (c) 2012-2018 Snowplow Analytics Ltd. All rights reserved.
  *
  * This program is licensed to you under the Apache License Version 2.0,
  * and you may not use this file except in compliance with the Apache License Version 2.0.
@@ -15,7 +15,7 @@ package enrichments.registry.sqlquery
 
 sealed trait SqlQueryEnrichmentError extends Throwable {
   val message: String
-  override def toString = message
+  override def toString   = message
   override def getMessage = message
 }
 
@@ -30,4 +30,3 @@ case class InvalidConfiguration(message: String) extends SqlQueryEnrichmentError
 case class InvalidDbResponse(message: String) extends SqlQueryEnrichmentError
 
 case class InvalidInput(message: String) extends SqlQueryEnrichmentError
-

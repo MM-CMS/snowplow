@@ -8,6 +8,7 @@ aws:
       assets: s3://snowplow-hosted-assets # DO NOT CHANGE unless you are hosting the jarfiles etc yourself in your own bucket
       jsonpath_assets: # If you have defined your own JSON Schemas, add the s3:// path to your own JSON Path files in your own bucket here
       log: ADD HERE
+      encrypted: false # Whether the buckets below are enrcrypted using server side encryption (SSE-S3)
       raw:
         in:                  # This is a YAML array of one or more in buckets - you MUST use hyphens before each entry in the array, as below
           - ADD HERE         # e.g. s3://my-old-collector-bucket
@@ -25,13 +26,14 @@ aws:
         errors: ADD HERE     # Leave blank unless :continue_on_unexpected_error: set to true below
         archive: ADD HERE    # Where to archive shredded events to, e.g. s3://my-archive-bucket/shredded
   emr:
-    ami_version: 5.5.0
+    ami_version: 5.9.0
     region: ADD HERE        # Always set this
     jobflow_role: EMR_EC2_DefaultRole # Created using $ aws emr create-default-roles
     service_role: EMR_DefaultRole     # Created using $ aws emr create-default-roles
     placement: ADD HERE     # Set this if not running in VPC. Leave blank otherwise
     ec2_subnet_id: ADD HERE # Set this if running in VPC. Leave blank otherwise
     ec2_key_name: ADD HERE
+    security_configuration: ADD HERE # Specify your EMR security configuration if needed. Leave blank otherwise
     bootstrap: []           # Set this to specify custom boostrap actions. Leave empty otherwise
     software:
       hbase:                # Optional. To launch on cluster, provide version, "0.92.0", keep quotes. Leave empty otherwise.
@@ -61,13 +63,13 @@ collectors:
   format: cloudfront # For example: 'clj-tomcat' for the Clojure Collector, 'thrift' for Thrift records, 'tsv/com.amazon.aws.cloudfront/wd_access_log' for Cloudfront access logs or 'ndjson/urbanairship.connect/v1' for UrbanAirship Connect events
 enrich:
   versions:
-    spark_enrich: 1.9.0 # Version of the Spark Enrichment process
+    spark_enrich: 1.16.0 # Version of the Spark Enrichment process
   continue_on_unexpected_error: false # Set to 'true' (and set :out_errors: above) if you don't want any exceptions thrown from ETL
   output_compression: NONE # Compression only supported with Redshift, set to NONE if you have Postgres targets. Allowed formats: NONE, GZIP
 storage:
   versions:
-    rdb_loader: 0.12.0
-    rdb_shredder: 0.12.0        # Version of the Spark Shredding process
+    rdb_loader: 0.14.0
+    rdb_shredder: 0.13.1        # Version of the Spark Shredding process
     hadoop_elasticsearch: 0.1.0 # Version of the Hadoop to Elasticsearch copying process
 monitoring:
   tags: {} # Name-value pairs describing this job
@@ -75,5 +77,7 @@ monitoring:
     level: DEBUG # You can optionally switch to INFO for production
   snowplow:
     method: get
+    protocol: http
+    port: 80
     app_id: ADD HERE # e.g. snowplow
     collector: ADD HERE # e.g. d3rkrsqld9gmqf.cloudfront.net

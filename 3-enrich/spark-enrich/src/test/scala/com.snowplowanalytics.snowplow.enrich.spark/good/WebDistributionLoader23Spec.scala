@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2017 Snowplow Analytics Ltd. All rights reserved.
+ * Copyright (c) 2012-2018 Snowplow Analytics Ltd. All rights reserved.
  *
  * This program is licensed to you under the Apache License Version 2.0,
  * and you may not use this file except in compliance with the Apache License Version 2.0.
@@ -37,7 +37,7 @@ object WebDistributionLoader23Spec {
     "tsv", // "collector version"
     etlVersion,
     null,
-    "255.255.255.255",
+    "104851162466b684c03faccae36f42622bead233",
     null,
     null,
     null,
@@ -144,8 +144,12 @@ class WebDistributionLoader23Spec extends Specification with EnrichJobSpec {
   override def appName = "web-distribution-loader-23"
   sequential
   "A job which processes a CloudFront web distribution log file" should {
-    runEnrichJob(WebDistributionLoader23Spec.lines, "tsv/com.amazon.aws.cloudfront/wd_access_log",
-      "1", false, List("geo"))
+    runEnrichJob(
+      WebDistributionLoader23Spec.lines,
+      "tsv/com.amazon.aws.cloudfront/wd_access_log",
+      "1",
+      false,
+      List("geo"))
 
     "correctly output 1 page ping" in {
       val Some(goods) = readPartFile(dirs.output)

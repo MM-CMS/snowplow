@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2017 Snowplow Analytics Ltd. All rights reserved.
+ * Copyright (c) 2012-2018 Snowplow Analytics Ltd. All rights reserved.
  *
  * This program is licensed to you under the Apache License Version 2.0,
  * and you may not use this file except in compliance with the Apache License Version 2.0.
@@ -12,36 +12,34 @@
  * See the Apache License Version 2.0 for the specific language governing permissions and
  * limitations there under.
  */
-package com.snowplowanalytics.snowplow.enrich
+package com.snowplowanalytics.snowplow
+package enrich
 package spark
 
 // Java
 import java.io.{BufferedWriter, File, FileWriter, IOException}
-
 // Scala
 import scala.collection.JavaConverters._
 import scala.io.Source
 import scala.util.Random
-
+// Snowplow
+import com.snowplowanalytics.snowplow.CollectorPayload.thrift.model1.CollectorPayload
+// Hadoop
+import com.hadoop.compression.lzo.GPLNativeCodeLoader
 // Commons
 import org.apache.commons.codec.binary.Base64
 import org.apache.commons.io.{FileUtils => FU}
 import org.apache.commons.io.filefilter.TrueFileFilter
-
 // Json4s
 import org.json4s.JsonDSL._
 import org.json4s.jackson.JsonMethods.{compact, parse}
-
-// Scalaz
-import scalaz._
-import Scalaz._
-
 // Specs2
 import org.specs2.execute.{AsResult, ResultExecution}
 import org.specs2.matcher.{Expectable, Matcher}
 import org.specs2.matcher.Matchers._
 
 object EnrichJobSpec {
+
   /** Case class representing the input lines written in a file. */
   case class Lines(l: String*) {
     val lines = l.toList
@@ -61,18 +59,24 @@ object EnrichJobSpec {
 
   /** Case class representing the directories where the output of the job has been written. */
   case class OutputDirs(output: File, badRows: File) {
+
     /** Delete recursively the output and bad rows directories. */
     def deleteAll(): Unit = List(badRows, output).foreach(deleteRecursively)
   }
 
-  val etlVersion = "spark-1.9.0-common-0.25.0"
+  val etlVersion =
+    s"spark-${generated.ProjectSettings.version}-common-${generated.ProjectSettings.commonEnrichVersion}"
 
   val etlTimestamp = "2001-09-09 01:46:40.000"
 
-  private val outputFields = classOf[common.outputs.EnrichedEvent]
-    .getDeclaredFields
+  private val outputFields = classOf[common.outputs.EnrichedEvent].getDeclaredFields
     .map(_.getName)
   private val unmatchableFields = List("event_id")
+
+  /**
+   * Is lzo available?
+   */
+  def isLzoSupported: Boolean = GPLNativeCodeLoader.isNativeCodeLoaded()
 
   /**
    * A Specs2 matcher to check if a CanonicalOutput field is correctly set.
@@ -82,15 +86,17 @@ object EnrichJobSpec {
    */
   case class BeFieldEqualTo(expected: String, index: Int) extends Matcher[String] {
 
-    private val field = outputFields(index)
+    private val field        = outputFields(index)
     private val unmatcheable = isUnmatchable(field)
 
-    def apply[S <: String](actual: Expectable[S]) = {
-      result((unmatcheable && expected == null) || actual.value == expected,
-        "%s: %s".format(field, if (unmatcheable) "is unmatcheable" else "%s equals %s".format(actual.description, expected)),
-        "%s: %s does not equal %s".format(field, actual.description, expected),
-        actual)
-    }
+    def apply[S <: String](actual: Expectable[S]) =
+      result(
+        (unmatcheable && expected == null) || actual.value == expected,
+        if (unmatcheable) s"$field (index: $index): is unmatcheable"
+        else s"$field (index: $index): ${actual.description} equals $expected",
+        s"$field (index: $index): ${actual.description} does not equal $expected",
+        actual
+      )
 
     /**
      * Whether a field in CanonicalOutput is unmatchable - i.e. has unpredictable values.
@@ -102,10 +108,14 @@ object EnrichJobSpec {
 
   /** A Specs2 matcher to check if a directory on disk is empty or not. */
   val beEmptyDir: Matcher[File] =
-    ((f: File) =>
-      !f.isDirectory ||
-        f.list().length == 0 ||
-        f.listFiles().filter(f => f.getName != "_SUCCESS" && !f.getName.endsWith(".crc")).map(_.length).sum == 0,
+    (
+      (f: File) =>
+        !f.isDirectory ||
+          f.list().length == 0 ||
+          f.listFiles()
+            .filter(f => f.getName != "_SUCCESS" && !f.getName.endsWith(".crc"))
+            .map(_.length)
+            .sum == 0,
       "is populated dir")
 
   /**
@@ -113,7 +123,7 @@ object EnrichJobSpec {
    * of the supported AsResult typeclasses.
    */
   implicit def unitAsResult: AsResult[Unit] = new AsResult[Unit] {
-    def asResult(r: =>Unit) = ResultExecution.execute(r)(_ => org.specs2.execute.Success())
+    def asResult(r: => Unit) = ResultExecution.execute(r)(_ => org.specs2.execute.Success())
   }
 
   /**
@@ -126,9 +136,7 @@ object EnrichJobSpec {
       .filter(s => s.contains("part-") && !s.contains("crc"))
     files.headOption match {
       case Some(f) =>
-        val list = Source.fromFile(new File(f))
-          .getLines
-          .toList
+        val list = Source.fromFile(new File(f)).getLines.toList
         Some(list)
       case None => None
     }
@@ -152,7 +160,7 @@ object EnrichJobSpec {
    * Throws an exception if deletion is unsuccessful.
    */
   def deleteRecursively(file: File): Unit = {
-    def listFilesSafely(file: File): Seq[File] = {
+    def listFilesSafely(file: File): Seq[File] =
       if (file.exists()) {
         val files = file.listFiles()
         if (files == null) throw new IOException(s"Failed to list files for dir: $file")
@@ -160,7 +168,6 @@ object EnrichJobSpec {
       } else {
         Seq.empty[File]
       }
-    }
 
     try {
       if (file.isDirectory) {
@@ -202,7 +209,8 @@ object EnrichJobSpec {
    * @return the created file
    */
   def randomFile(tag: String): File =
-    new File(System.getProperty("java.io.tmpdir"),
+    new File(
+      System.getProperty("java.io.tmpdir"),
       s"snowplow-enrich-job-${tag}-${Random.nextInt(Int.MaxValue)}")
 
   /** Remove the timestamp from bad rows so that what remains is deterministic */
@@ -210,7 +218,7 @@ object EnrichJobSpec {
     val badRowJson = parse(badRow)
     val badRowWithoutTimestamp =
       ("line", (badRowJson \ "line")) ~ (("errors", (badRowJson \ "errors")))
-      compact(badRowWithoutTimestamp)
+    compact(badRowWithoutTimestamp)
   }
 
   /**
@@ -219,8 +227,8 @@ object EnrichJobSpec {
    */
   private val igluCentralConfig = {
     val encoder = new Base64(true)
-    new String(encoder.encode(
-      """|{
+    new String(
+      encoder.encode("""|{
         |"schema": "iglu:com.snowplowanalytics.iglu/resolver-config/jsonschema/1-0-0",
         |"data": {
           |"cacheSize": 500,
@@ -237,8 +245,7 @@ object EnrichJobSpec {
           |}
           |]
         |}
-      |}""".stripMargin.replaceAll("[\n\r]","").getBytes()
-    ))
+      |}""".stripMargin.replaceAll("[\n\r]", "").getBytes()))
   }
 
   /**
@@ -260,7 +267,8 @@ object EnrichJobSpec {
     currencyConversionEnabled: Boolean,
     javascriptScriptEnabled: Boolean,
     apiRequest: Boolean,
-    sqlQuery: Boolean
+    sqlQuery: Boolean,
+    iabEnrichmentEnabled: Boolean
   ): String = {
 
     /**
@@ -268,17 +276,32 @@ object EnrichJobSpec {
      * @param lookup One of the lookup types
      * @return JSON fragment containing the lookup's database and URI
      */
-    def getLookupJson(lookup: String): String = {
-       """|"%s": {
+    def getLookupJson(lookup: String): String =
+      """|"%s": {
             |"database": "%s",
             |"uri": "http://snowplow-hosted-assets.s3.amazonaws.com/third-party/maxmind"
-          |}""".format(lookup, lookup match {
-        case "geo"          => "GeoIPCity.dat"
-        case "isp"          => "GeoIPISP.dat"
-        case "organization" => "GeoIPOrg.dat"
-        case "domain"       => "GeoIPDomain.dat"
-        case "netspeed"     => "GeoIPNetSpeedCell.dat"
-        })
+          |}""".format(
+        lookup,
+        lookup match {
+          case "geo"            => "GeoIP2-City.mmdb"
+          case "isp"            => "GeoIP2-ISP.mmdb"
+          case "domain"         => "GeoIP2-Domain.mmdb"
+          case "connectionType" => "GeoIP2-Connection-Type.mmdb"
+        }
+      )
+
+    def getIabJson(database: String): String = {
+      """|"%s": {
+         |"database": "%s",
+         |"uri": "http://snowplow-hosted-assets.s3.amazonaws.com/third-party/iab"
+         |}""".format(
+        database,
+        database match {
+          case "ipFile"               => "ip_exclude_current_cidr.txt"
+          case "excludeUseragentFile" => "exclude_current.txt"
+          case "includeUseragentFile" => "include_current.txt"
+        }
+      )
     }
 
     /** Converts the JavaScript script to Base64. */
@@ -296,8 +319,7 @@ object EnrichJobSpec {
         |  return [ { schema: "iglu:com.acme/app_id/jsonschema/1-0-0",
         |               data:  { appIdUpper: appIdUpper } } ];
         |}
-        |""".stripMargin.replaceAll("[\n\r]","").getBytes
-      ))
+        |""".stripMargin.replaceAll("[\n\r]", "").getBytes))
     }
 
     val sqlQueryParameters =
@@ -405,8 +427,7 @@ object EnrichJobSpec {
       |}""".stripMargin
 
     val encoder = new Base64(true) // true means "url safe"
-    new String(encoder.encode(
-       s"""|{
+    new String(encoder.encode(s"""|{
             |"schema": "iglu:com.snowplowanalytics.snowplow/enrichments/jsonschema/1-0-0",
             |"data": [
               |{
@@ -421,13 +442,26 @@ object EnrichJobSpec {
                 |}
               |},
               |{
-                |"schema": "iglu:com.snowplowanalytics.snowplow/ip_lookups/jsonschema/1-0-0",
+                |"schema": "iglu:com.snowplowanalytics.snowplow/ip_lookups/jsonschema/2-0-0",
                 |"data": {
                   |"vendor": "com.snowplowanalytics.snowplow",
                   |"name": "ip_lookups",
                   |"enabled": true,
                   |"parameters": {
                     ${lookups.map(getLookupJson(_)).mkString(",\n")}
+                  |}
+                |}
+              |},
+              |{
+                |"schema": "iglu:com.snowplowanalytics.snowplow.enrichments/iab_spiders_and_robots_enrichment/jsonschema/1-0-0",
+                |"data": {
+                  |"vendor": "com.snowplowanalytics.snowplow",
+                  |"name": "iab_spiders_and_robots_enrichment",
+                  |"enabled": ${iabEnrichmentEnabled},
+                  |"parameters": {
+                    ${List("ipFile", "excludeUseragentFile", "includeUseragentFile")
+                                   .map(getIabJson(_))
+                                   .mkString(",\n")}
                   |}
                 |}
               |},
@@ -534,10 +568,52 @@ object EnrichJobSpec {
                   |"enabled": ${sqlQuery},
                   |"parameters": ${sqlQueryParameters}
                 |}
+              |},
+              |{
+                |"schema": "iglu:com.snowplowanalytics.snowplow.enrichments/pii_enrichment_config/jsonschema/2-0-0",
+                |"data": {
+                  |"vendor": "com.snowplowanalytics.snowplow.enrichments",
+                  |"name": "pii_enrichment_config",
+                  |"emitEvent": true,
+                  |"enabled": true,
+                  |"parameters": {
+                    |"pii": [
+                      |{
+                        |"pojo": {
+                          |"field": "user_id"
+                        |}
+                      |},
+                      |{
+                        |"pojo": {
+                          |"field": "user_ipaddress"
+                        |}
+                      |},
+                      |{
+                        |"json": {
+                          |"field": "unstruct_event",
+                          |"schemaCriterion": "iglu:com.mailgun/message_delivered/jsonschema/1-0-*",
+                          |"jsonPath": "$$['recipient']"
+                        |}
+                      |},
+                      |{
+                        |"json": {
+                          |"field": "unstruct_event",
+                          |"schemaCriterion": "iglu:com.mailchimp/subscribe/jsonschema/1-*-*",
+                          |"jsonPath": "$$.data.['email', 'ip_opt']"
+                        |}
+                      |}
+                    |],
+                    |"strategy": {
+                      |"pseudonymize": {
+                        |"hashFunction": "SHA-1",
+                        |"salt": "pink123"
+                      |}
+                    |}
+                  |}
+                |}
               |}
             |]
-          |}""".stripMargin.replaceAll("[\n\r]","").getBytes
-      ))
+          |}""".stripMargin.replaceAll("[\n\r]", "").getBytes))
   }
 }
 
@@ -560,11 +636,22 @@ trait EnrichJobSpec extends SparkSpec {
     currencyConversionEnabled: Boolean = false,
     javascriptScriptEnabled: Boolean = false,
     apiRequestEnabled: Boolean = false,
-    sqlQueryEnabled: Boolean = false
+    sqlQueryEnabled: Boolean = false,
+    iabEnrichmentEnabled: Boolean = false
   ): Unit = {
     val input = mkTmpFile("input", lines)
-    runEnrichJob(input.toString(), collector, anonOctets, anonOctetsEnabled, lookups,
-      currencyConversionEnabled, javascriptScriptEnabled, apiRequestEnabled, sqlQueryEnabled)
+    runEnrichJob(
+      input.toString(),
+      collector,
+      anonOctets,
+      anonOctetsEnabled,
+      lookups,
+      currencyConversionEnabled,
+      javascriptScriptEnabled,
+      apiRequestEnabled,
+      sqlQueryEnabled,
+      iabEnrichmentEnabled
+    )
     deleteRecursively(input)
   }
 
@@ -582,22 +669,69 @@ trait EnrichJobSpec extends SparkSpec {
     currencyConversionEnabled: Boolean,
     javascriptScriptEnabled: Boolean,
     apiRequestEnabled: Boolean,
-    sqlQueryEnabled: Boolean
+    sqlQueryEnabled: Boolean,
+    iabEnrichmentEnabled: Boolean
   ): Unit = {
     val config = Array(
-      "--input-folder", inputFile,
-      "--input-format", collector,
-      "--output-folder", dirs.output.toString(),
-      "--bad-folder", dirs.badRows.toString(),
-      "--enrichments", getEnrichments(anonOctets, anonOctetsEnabled, lookups,
-        currencyConversionEnabled, javascriptScriptEnabled, apiRequestEnabled, sqlQueryEnabled),
-      "--iglu-config", igluConfig,
-      "--etl-timestamp", 1000000000000L.toString,
+      "--input-folder",
+      inputFile,
+      "--input-format",
+      collector,
+      "--output-folder",
+      dirs.output.toString(),
+      "--bad-folder",
+      dirs.badRows.toString(),
+      "--enrichments",
+      getEnrichments(
+        anonOctets,
+        anonOctetsEnabled,
+        lookups,
+        currencyConversionEnabled,
+        javascriptScriptEnabled,
+        apiRequestEnabled,
+        sqlQueryEnabled,
+        iabEnrichmentEnabled
+      ),
+      "--iglu-config",
+      igluConfig,
+      "--etl-timestamp",
+      1000000000000L.toString,
       "--local"
     )
 
     val job = EnrichJob(spark, config)
     job.run()
+  }
+
+  /**
+   * Write a LZO file with a random name.
+   * @param tag an identifier who will become part of the file name
+   * @param payload the content of the file
+   * @return the created file which was written to
+   */
+  def writeLzo(tag: String, payload: CollectorPayload): File = {
+    import com.twitter.elephantbird.mapreduce.io.ThriftWritable
+    import com.twitter.elephantbird.mapreduce.output.LzoThriftBlockOutputFormat
+    import org.apache.hadoop.io.LongWritable
+    val f = new File(
+      System.getProperty("java.io.tmpdir"),
+      s"snowplow-enrich-job-${tag}-${scala.util.Random.nextInt(Int.MaxValue)}")
+    val rdd = spark.sparkContext
+      .parallelize(Seq(payload))
+      .map { e =>
+        val writable = ThriftWritable.newInstance(classOf[CollectorPayload])
+        writable.set(e)
+        (new LongWritable(1L), writable)
+      }
+    LzoThriftBlockOutputFormat.setClassConf(classOf[CollectorPayload], hadoopConfig)
+    rdd.saveAsNewAPIHadoopFile(
+      f.toString(),
+      classOf[org.apache.hadoop.io.LongWritable],
+      classOf[ThriftWritable[CollectorPayload]],
+      classOf[LzoThriftBlockOutputFormat[ThriftWritable[CollectorPayload]]],
+      hadoopConfig
+    )
+    f
   }
 
   override def afterAll(): Unit = {

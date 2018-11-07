@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2017 Snowplow Analytics Ltd. All rights reserved.
+ * Copyright (c) 2012-2018 Snowplow Analytics Ltd. All rights reserved.
  *
  * This program is licensed to you under the Apache License Version 2.0,
  * and you may not use this file except in compliance with the Apache License Version 2.0.
@@ -23,18 +23,19 @@ object Dependencies {
     // For user-agent-utils
     "Clojars Maven Repo" at "http://clojars.org/repo",
     // For hadoop-lzo
-    "Twitter" at "http://maven.twttr.com/"
+    "Twitter" at "https://maven.twttr.com/"
   )
 
   object V {
     // Java
     val hadoopLZO        = "0.4.20"
     val elephantBird     = "4.14"
+    val geoip2           = "2.5.0"
     // Scala
-    val spark            = "2.1.0"
+    val spark            = "2.2.0"
     val scalaz7          = "7.0.9"
     val scopt            = "3.5.0"
-    val commonEnrich     = "0.25.0"
+    val commonEnrich     = "0.35.0"
     val igluClient       = "0.5.0"
     // Scala (test only)
     val specs2           = "2.3.13"
@@ -45,19 +46,22 @@ object Dependencies {
 
   object Libraries {
     // Java
-    val hadoopLZO        = "com.hadoop.gplcompression" %  "hadoop-lzo"                   % V.hadoopLZO
-    val elephantBird     = "com.twitter.elephantbird"  %  "elephant-bird-core"           % V.elephantBird
+    val hadoopLZO         = "com.hadoop.gplcompression" %  "hadoop-lzo"               % V.hadoopLZO
+    val elephantBird      = "com.twitter.elephantbird"  %  "elephant-bird-core"       % V.elephantBird
+    // Downgrading needed to resolve conflicts between Spark's jackson (2.6.7) and geoip2's (2.9.3)
+    val geoip2            = "com.maxmind.geoip2"        %  "geoip2"                   % V.geoip2
     // Scala
-    val sparkCore        = "org.apache.spark"          %% "spark-core"                   % V.spark        % "provided"
-    val sparkSQL         = "org.apache.spark"          %% "spark-sql"                    % V.spark        % "provided"
-    val scalaz7          = "org.scalaz"                %% "scalaz-core"                  % V.scalaz7
-    val scopt            = "com.github.scopt"          %% "scopt"                        % V.scopt
-    val commonEnrich     = "com.snowplowanalytics"     %% "snowplow-common-enrich"       % V.commonEnrich
-    val igluClient       = "com.snowplowanalytics"     %% "iglu-scala-client"            % V.igluClient
+    val sparkCore         = "org.apache.spark"          %% "spark-core"               % V.spark        % "provided"
+    val sparkSQL          = "org.apache.spark"          %% "spark-sql"                % V.spark        % "provided"
+    val scalaz7           = "org.scalaz"                %% "scalaz-core"              % V.scalaz7
+    val scopt             = "com.github.scopt"          %% "scopt"                    % V.scopt
+    val commonEnrich      = ("com.snowplowanalytics"    %% "snowplow-common-enrich"   % V.commonEnrich)
+      .exclude("com.maxmind.geoip2", "geoip2")
+    val igluClient        = "com.snowplowanalytics"     %% "iglu-scala-client"        % V.igluClient
     // Thrift
-    val snowplowRawEvent = "com.snowplowanalytics"     % "snowplow-thrift-raw-event"     % V.snowplowRawEvent
-    val collectorPayload = "com.snowplowanalytics"     % "collector-payload-1"           % V.collectorPayload
+    val snowplowRawEvent  = "com.snowplowanalytics"     % "snowplow-thrift-raw-event" % V.snowplowRawEvent
+    val collectorPayload  = "com.snowplowanalytics"     % "collector-payload-1"       % V.collectorPayload
     // Scala (test only)
-    val specs2           = "org.specs2"                %% "specs2-core"                  % V.specs2           % "test"
+    val specs2            = "org.specs2"                %% "specs2-core"              % V.specs2           % "test"
   }
 }

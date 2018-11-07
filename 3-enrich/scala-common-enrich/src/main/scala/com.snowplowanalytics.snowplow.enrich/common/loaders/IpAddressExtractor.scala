@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2014 Snowplow Analytics Ltd. All rights reserved.
+ * Copyright (c) 2012-2018 Snowplow Analytics Ltd. All rights reserved.
  *
  * This program is licensed to you under the Apache License Version 2.0,
  * and you may not use this file except in compliance with the Apache License Version 2.0.
@@ -21,24 +21,41 @@ import scala.annotation.tailrec
  */
 object IpAddressExtractor {
 
-  private val IpExtractionRegex = """^x-forwarded-for: ((?:[0-9]|\.)+).*""".r
+  private val ipRegex            = """\"?\[?((?:[0-9a-f]|\.|\:+)+).*\]?\"?"""
+  private val XForwardedForRegex = s"""^x-forwarded-for: $ipRegex.*""".r
+  private val ForwardedForRegex  = s"""^forwarded: for=$ipRegex.*""".r
+  private val CloudfrontRegex    = s"""^$ipRegex.*""".r
 
   /**
    * If a request has been forwarded, extract the original client IP address;
    * otherwise return the standard IP address
    *
-   * @param headers List of headers potentially containing X-FORWARDED-FOR
-   * @param lastIp Fallback IP address if no XI-FORWARDED-FOR header exists
+   * @param headers List of headers potentially containing X-FORWARDED-FOR or FORWARDED
+   * @param lastIp Fallback IP address if no X-FORWARDED-FOR or FORWARDED header exists
    * @return True client IP address
    */
   @tailrec
-  def extractIpAddress(headers: List[String], lastIp: String): String = {
+  def extractIpAddress(headers: List[String], lastIp: String): String =
     headers match {
-      case h :: t => h.toLowerCase match {
-        case IpExtractionRegex(originalIpAddress) => originalIpAddress
-        case _ => extractIpAddress(t, lastIp)
-      }
+      case h :: t =>
+        h.toLowerCase match {
+          case XForwardedForRegex(originalIpAddress) => originalIpAddress
+          case ForwardedForRegex(originalIpAddress)  => originalIpAddress
+          case _                                     => extractIpAddress(t, lastIp)
+        }
       case Nil => lastIp
     }
+
+  /**
+   * If a request has been forwarded, extract the original client IP address;
+   * otherwise return the standard IP address
+   *
+   * @param xForwardedFor x-forwarded-for field from the Cloudfront log
+   * @param lastIp Fallback IP address if no X-FORWARDED-FOR header exists
+   * @return True client IP address
+   */
+  def extractIpAddress(xForwardedFor: String, lastIp: String): String = xForwardedFor match {
+    case CloudfrontRegex(originalIpAddress) => originalIpAddress
+    case _                                  => lastIp
   }
 }

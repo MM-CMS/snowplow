@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2017 Snowplow Analytics Ltd. All rights reserved.
+ * Copyright (c) 2012-2018 Snowplow Analytics Ltd. All rights reserved.
  *
  * This program is licensed to you under the Apache License Version 2.0,
  * and you may not use this file except in compliance with the Apache License Version 2.0.
@@ -12,12 +12,14 @@
  * See the Apache License Version 2.0 for the specific language governing permissions and
  * limitations there under.
  */
-lazy val root = project.in(file("."))
+lazy val root = project
+  .in(file("."))
   .settings(
-    name        := "snowplow-spark-enrich",
-    version     := "1.9.0",
+    name := "snowplow-spark-enrich",
+    version := "1.16.0",
     description := "The Snowplow Spark Enrichment process"
   )
+  .settings(BuildSettings.formatting)
   .settings(BuildSettings.buildSettings)
   .settings(BuildSettings.sbtAssemblySettings)
   .settings(
@@ -25,6 +27,7 @@ lazy val root = project.in(file("."))
       // Java
       Dependencies.Libraries.hadoopLZO,
       Dependencies.Libraries.elephantBird,
+      Dependencies.Libraries.geoip2,
       // Scala
       Dependencies.Libraries.sparkCore,
       Dependencies.Libraries.sparkSQL,
@@ -40,4 +43,6 @@ lazy val root = project.in(file("."))
     )
   )
 
-shellPrompt := { _ => "spark-enrich> " }
+shellPrompt := { _ =>
+  "spark-enrich> "
+}

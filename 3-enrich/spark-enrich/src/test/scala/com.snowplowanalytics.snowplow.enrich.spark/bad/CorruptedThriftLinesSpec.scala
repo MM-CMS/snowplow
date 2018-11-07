@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2017 Snowplow Analytics Ltd. All rights reserved.
+ * Copyright (c) 2012-2018 Snowplow Analytics Ltd. All rights reserved.
  *
  * This program is licensed to you under the Apache License Version 2.0,
  * and you may not use this file except in compliance with the Apache License Version 2.0.
@@ -18,7 +18,8 @@ package bad
 import org.specs2.mutable.Specification
 
 object CorruptedThriftLinesSpec {
-  val expected = """{"line":"bac=","errors":[{"level":"error","message":"Error deserializing raw event: Cannot read. Remote side has closed. Tried to read 2 bytes, but only got 1 bytes. (This is often indicative of an internal error on the server side. Please check your server logs.)"}]}"""
+  val expected =
+    """{"line":"bac=","errors":[{"level":"error","message":"Error deserializing raw event: Cannot read. Remote side has closed. Tried to read 2 bytes, but only got 1 bytes. (This is often indicative of an internal error on the server side. Please check your server logs.)"}]}"""
 }
 
 /** Input Thrift data cannot be decoded so should be base 64 encoded in the resulting bad row. */
@@ -27,16 +28,28 @@ class CorruptedThriftLinesSpec extends Specification with EnrichJobSpec {
   override def appName = "corrupted-thrift-lines"
   sequential
   "A job which processes a corrupted input line" should {
-    runEnrichJob(getClass().getResource("CorruptedThriftLinesSpec.line.lzo").toString(), "thrift",
-      "1", false, List("geo"), false, false, false, false)
+    if (!isLzoSupported) "native-lzo not supported" in skipped
+    else {
+      runEnrichJob(
+        getClass().getResource("CorruptedThriftLinesSpec.line.lzo").toString(),
+        "thrift",
+        "1",
+        false,
+        List("geo"),
+        false,
+        false,
+        false,
+        false,
+        false)
 
-    "write a bad row JSON containing the input line and all errors" in {
-      val Some(bads) = readPartFile(dirs.badRows)
-      removeTstamp(bads.head) must_== CorruptedThriftLinesSpec.expected
-    }
+      "write a bad row JSON containing the input line and all errors" in {
+        val Some(bads) = readPartFile(dirs.badRows)
+        removeTstamp(bads.head) must_== CorruptedThriftLinesSpec.expected
+      }
 
-    "not write any events" in {
-      dirs.output must beEmptyDir
+      "not write any events" in {
+        dirs.output must beEmptyDir
+      }
     }
   }
 }

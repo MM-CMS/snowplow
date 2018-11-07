@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2017 Snowplow Analytics Ltd. All rights reserved.
+ * Copyright (c) 2012-2018 Snowplow Analytics Ltd. All rights reserved.
  *
  * This program is licensed to you under the Apache License Version 2.0,
  * and you may not use this file except in compliance with the Apache License Version 2.0.
@@ -14,6 +14,10 @@
  */
 import sbt._
 import Keys._
+
+// Scalafmt plugin
+import com.lucidchart.sbt.scalafmt.ScalafmtPlugin._
+import com.lucidchart.sbt.scalafmt.ScalafmtCorePlugin.autoImport._
 
 object BuildSettings {
 
@@ -57,8 +61,9 @@ object BuildSettings {
         |  val name = "%s"
         |  val organization = "%s"
         |  val scalaVersion = "%s"
+        |  val commonEnrichVersion = "%s"
         |}
-        |""".stripMargin.format(version.value, name.value, organization.value, scalaVersion.value))
+        |""".stripMargin.format(version.value, name.value, organization.value, scalaVersion.value, Dependencies.V.commonEnrich))
       Seq(file)
     }.taskValue
   )
@@ -70,15 +75,27 @@ object BuildSettings {
   lazy val sbtAssemblySettings = Seq(
     // Slightly cleaner jar name
     assemblyJarName in assembly := { name.value + "-" + version.value + ".jar" },
+    assemblyShadeRules in assembly := Seq(
+      ShadeRule.rename(
+        // Fix incompatibility with IAB client
+        "org.apache.commons.io.**" -> "shadecommonsio.@1"
+      ).inAll
+    ),
     assemblyMergeStrategy in assembly := {
       case x if x.startsWith("META-INF") => MergeStrategy.discard
       case x if x.endsWith(".html") => MergeStrategy.discard
       case x if x.endsWith("package-info.class") => MergeStrategy.first
       case PathList("com", "google", "common", tail@_*) => MergeStrategy.first
       case PathList("org", "apache", "spark", "unused", tail@_*) => MergeStrategy.first
+      case "build.properties" => MergeStrategy.first
       case x =>
         val oldStrategy = (assemblyMergeStrategy in assembly).value
         oldStrategy(x)
     }
+  )
+  lazy val formatting = Seq(
+    scalafmtConfig    := file(".scalafmt.conf"),
+    scalafmtOnCompile := true,
+    scalafmtVersion   := "1.3.0"
   )
 }

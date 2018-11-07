@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2017 Snowplow Analytics Ltd. All rights reserved.
+ * Copyright (c) 2012-2018 Snowplow Analytics Ltd. All rights reserved.
  *
  * This program is licensed to you under the Apache License Version 2.0,
  * and you may not use this file except in compliance with the Apache License Version 2.0.
@@ -37,7 +37,7 @@ object Apr2014CfLineSpec {
     "cloudfront",
     etlVersion,
     null, // No user_id set
-    "255.255.255.255",
+    "104851162466b684c03faccae36f42622bead233",
     "2071613637",
     "44082d3af0e30126",
     "2",

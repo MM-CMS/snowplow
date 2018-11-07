@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2016 Snowplow Analytics Ltd. All rights reserved.
+ * Copyright (c) 2012-2018 Snowplow Analytics Ltd. All rights reserved.
  *
  * This program is licensed to you under the Apache License Version 2.0,
  * and you may not use this file except in compliance with the Apache License Version 2.0.
@@ -28,23 +28,27 @@ import org.json4s._
 import org.json4s.JsonDSL._
 import org.json4s.jackson.JsonMethods.fromJsonNode
 
-// Akka
-import akka.actor.ActorSystem
-import com.typesafe.config.ConfigFactory
-
 // Iglu
-import com.snowplowanalytics.iglu.client.{ SchemaKey, SchemaCriterion }
+import com.snowplowanalytics.iglu.client.{SchemaCriterion, SchemaKey}
 
 // This project
 import outputs.EnrichedEvent
-import utils.{ HttpClient, ScalazJson4sUtils }
+import utils.{HttpClient, ScalazJson4sUtils}
 
 /**
  * Lets us create an ApiRequestEnrichmentConfig from a JValue
  */
 object ApiRequestEnrichmentConfig extends ParseableEnrichment {
 
-  val supportedSchema = SchemaCriterion("com.snowplowanalytics.snowplow.enrichments", "api_request_enrichment_config", "jsonschema", 1, 0, 0)
+  implicit val formats = DefaultFormats
+
+  val supportedSchema =
+    SchemaCriterion("com.snowplowanalytics.snowplow.enrichments",
+                    "api_request_enrichment_config",
+                    "jsonschema",
+                    1,
+                    0,
+                    0)
 
   /**
    * Creates an ApiRequestEnrichment instance from a JValue.
@@ -54,8 +58,8 @@ object ApiRequestEnrichmentConfig extends ParseableEnrichment {
    *        Must be a supported SchemaKey for this enrichment
    * @return a configured ApiRequestEnrichment instance
    */
-  def parse(config: JValue, schemaKey: SchemaKey): ValidatedNelMessage[ApiRequestEnrichment] = {
-    isParseable(config, schemaKey).flatMap( conf => {
+  def parse(config: JValue, schemaKey: SchemaKey): ValidatedNelMessage[ApiRequestEnrichment] =
+    isParseable(config, schemaKey).flatMap(conf => {
       (for {
         inputs  <- ScalazJson4sUtils.extract[List[Input]](config, "parameters", "inputs")
         httpApi <- ScalazJson4sUtils.extract[HttpApi](config, "parameters", "api", "http")
@@ -63,14 +67,12 @@ object ApiRequestEnrichmentConfig extends ParseableEnrichment {
         cache   <- ScalazJson4sUtils.extract[Cache](config, "parameters", "cache")
       } yield ApiRequestEnrichment(inputs, httpApi, outputs, cache)).toValidationNel
     })
-  }
 }
 
-case class ApiRequestEnrichment(inputs: List[Input], api: HttpApi, outputs: List[Output], cache: Cache) extends Enrichment {
+case class ApiRequestEnrichment(inputs: List[Input], api: HttpApi, outputs: List[Output], cache: Cache)
+    extends Enrichment {
 
   import ApiRequestEnrichment._
-
-  val version = new DefaultArtifactVersion("0.1.0")
 
   /**
    * Primary function of the enrichment
@@ -81,11 +83,11 @@ case class ApiRequestEnrichment(inputs: List[Input], api: HttpApi, outputs: List
    * @param derivedContexts derived contexts
    * @return none if some inputs were missing, validated JSON context if lookup performed
    */
-  def lookup(
-      event: EnrichedEvent,
-      derivedContexts: List[JObject],
-      customContexts: JsonSchemaPairs,
-      unstructEvent: JsonSchemaPairs): ValidationNel[String, List[JObject]] = {
+  def lookup(event: EnrichedEvent,
+             derivedContexts: List[JObject],
+             customContexts: JsonSchemaPairs,
+             unstructEvent: JsonSchemaPairs): ValidationNel[String, List[JObject]] = {
+
     /**
      * Note that [[JsonSchemaPairs]] have specific structure - it is a pair,
      * where first element is [[SchemaKey]], second element is JSON Object
@@ -93,10 +95,10 @@ case class ApiRequestEnrichment(inputs: List[Input], api: HttpApi, outputs: List
      * but as nested JSON object. `schema` and `hierarchy` can be ignored here
      */
     val jsonCustomContexts = transformRawPairs(customContexts)
-    val jsonUnstructEvent = transformRawPairs(unstructEvent).headOption
+    val jsonUnstructEvent  = transformRawPairs(unstructEvent).headOption
 
-    val templateContext = Input.buildTemplateContext(
-      inputs, event, derivedContexts, jsonCustomContexts, jsonUnstructEvent)
+    val templateContext =
+      Input.buildTemplateContext(inputs, event, derivedContexts, jsonCustomContexts, jsonUnstructEvent)
 
     templateContext.flatMap(getOutputs(_).toValidationNel)
   }
@@ -111,8 +113,8 @@ case class ApiRequestEnrichment(inputs: List[Input], api: HttpApi, outputs: List
   private[apirequest] def getOutputs(validInputs: Option[Map[String, String]]): Validation[String, List[JObject]] = {
     val result = for {
       templateContext <- validInputs.toList
-      url <- api.buildUrl(templateContext).toList
-      output <- outputs
+      url             <- api.buildUrl(templateContext).toList
+      output          <- outputs
     } yield cachedOrRequest(url, output).leftMap(_.toString)
     result.sequenceU
   }
@@ -128,7 +130,7 @@ case class ApiRequestEnrichment(inputs: List[Input], api: HttpApi, outputs: List
     val value = cache.get(url) match {
       case Some(cachedResponse) => cachedResponse
       case None => {
-        val json = api.perform(client, url).flatMap(output.parse)
+        val json = api.perform(url).flatMap(output.parse)
         cache.put(url, json)
         json
       }
@@ -142,12 +144,6 @@ case class ApiRequestEnrichment(inputs: List[Input], api: HttpApi, outputs: List
  */
 object ApiRequestEnrichment {
 
-  // TODO: share it as soon as there will be another dependent enrichment
-  private lazy val actorSystem = ActorSystem("api-request-system",
-    ConfigFactory.parseString("akka.daemonic=on"))
-
-  private lazy val client = new HttpClient(actorSystem)
-
   /**
    * Transform pairs of schema and node obtained from [[utils.shredder.Shredder]]
    * into list of regular self-describing instance representing custom context
@@ -157,9 +153,10 @@ object ApiRequestEnrichment {
    * @return list of regular JObjects
    */
   def transformRawPairs(pairs: JsonSchemaPairs): List[JObject] =
-    pairs.map { case (schema, node) =>
-      val uri = schema.toSchemaUri
-      val data = fromJsonNode(node)
-      ("schema" -> uri) ~ ("data" -> data \ "data")
+    pairs.map {
+      case (schema, node) =>
+        val uri  = schema.toSchemaUri
+        val data = fromJsonNode(node)
+        ("schema" -> uri) ~ ("data" -> data \ "data")
     }
 }

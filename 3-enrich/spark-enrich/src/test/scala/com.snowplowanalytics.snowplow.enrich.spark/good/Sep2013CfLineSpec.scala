@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2017 Snowplow Analytics Ltd. All rights reserved.
+ * Copyright (c) 2012-2018 Snowplow Analytics Ltd. All rights reserved.
  *
  * This program is licensed to you under the Apache License Version 2.0,
  * and you may not use this file except in compliance with the Apache License Version 2.0.
@@ -37,7 +37,7 @@ object Sep2013CfLineSpec {
     "cloudfront",
     etlVersion,
     null, // No user_id set
-    "255.255.255.255",
+    "104851162466b684c03faccae36f42622bead233",
     "408352165",
     "2e99db5bd6a5150c",
     "1",
@@ -147,7 +147,7 @@ object Sep2013CfLineSpec {
     null,
     null,
     null,
-    """{"schema":"iglu:com.snowplowanalytics.snowplow/contexts/jsonschema/1-0-1","data":[{"schema":"iglu:com.snowplowanalytics.snowplow/ua_parser_context/jsonschema/1-0-0","data":{"useragentFamily":"IE","useragentMajor":"7","useragentMinor":"0","useragentPatch":null,"useragentVersion":"IE 7.0","osFamily":"Windows XP","osMajor":null,"osMinor":null,"osPatch":null,"osPatchMinor":null,"osVersion":"Windows XP","deviceFamily":"Other"}}]}""",
+    """{"schema":"iglu:com.snowplowanalytics.snowplow/contexts/jsonschema/1-0-1","data":[{"schema":"iglu:com.snowplowanalytics.snowplow/ua_parser_context/jsonschema/1-0-0","data":{"useragentFamily":"IE","useragentMajor":"7","useragentMinor":"0","useragentPatch":null,"useragentVersion":"IE 7.0","osFamily":"Windows","osMajor":"XP","osMinor":null,"osPatch":null,"osPatchMinor":null,"osVersion":"Windows XP","deviceFamily":"Other"}}]}""",
     null
   )
 }

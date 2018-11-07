@@ -22,6 +22,7 @@ describe Cli do
   ConfigError = Snowplow::EmrEtlRunner::ConfigError
 
   let(:c) { Cli.load_config(resource("sparse_config.yml"), "<<usage message>>") }
+  let(:s) { Cli.load_config(resource("stream_config.yml"), "<<usage message>>") }
   let(:a) { { :debug => true, :include => [], :skip => [] } }
 
   def resource(name)
@@ -29,11 +30,19 @@ describe Cli do
     filename += "/"+name
   end
 
+  describe '#load_targets' do
+    it 'raises a ConfigError if two storage targets with identical ids are passed' do
+      expect {
+        Cli.load_targets(resource('invalid-targets'))
+      }.to raise_exception(ConfigError, "Duplicate storage target ids: [\"id1\"]" )
+    end
+  end
+
   describe '#load_config' do
     it 'raises a ConfigError if the config file argument was nil' do
       expect {
         Cli.load_config(nil, "<<usage message>>")
-      }.to raise_exception( ConfigError, "Missing option: config\n<<usage message>>" )
+      }.to raise_exception(ConfigError, "Missing option: config\n<<usage message>>" )
     end
 
     it 'raises a ConfigError if the config file argument could not be found' do
@@ -141,7 +150,7 @@ describe Cli do
     it 'should reject bogus resume_from' do
       a[:resume_from] = 'lunch'
       expect { Cli.validate_and_coalesce(a, c) }.to raise_exception(ConfigError,
-        "Invalid option: resume-from can be enrich, shred, elasticsearch, archive_raw, rdb_load, analyze, archive_enriched, not 'lunch'")
+        "Invalid option: resume-from can be enrich, shred, elasticsearch, archive_raw, rdb_load, analyze, archive_enriched, archive_shredded, staging_stream_enrich not 'lunch'")
 
       %w(enrich shred elasticsearch archive_raw).each do |from|
         a[:resume_from] = from
@@ -152,7 +161,7 @@ describe Cli do
     it 'should reject bogus skip' do
       a[:skip] = [ 'lunch' ]
       expect { Cli.validate_and_coalesce(a, c) }.to raise_exception(ConfigError,
-        "Invalid option: skip can be staging, enrich, shred, elasticsearch, archive_raw, rdb_load, analyze, archive_enriched not 'lunch'")
+                                                                    "Invalid option: skip can be staging, enrich, shred, elasticsearch, archive_raw, rdb_load, consistency_check, analyze, load_manifest_check, archive_enriched, archive_shredded, staging_stream_enrich not 'lunch'")
 
       %w(enrich shred elasticsearch archive_raw).each do |from|
         a[:skip] = [ from ]
@@ -229,6 +238,30 @@ describe Cli do
       c[:collectors][:format] = "ndjson/something/something"
       Cli.validate_and_coalesce(a, c)
     end
-  end
 
+    it 'should accept stream enrich mode config' do
+      Cli.validate_and_coalesce(a, s)
+    end
+
+    it 'should reject --skip staging in stream enrich mode' do
+      a[:skip] = [ 'staging' ]
+      expect {
+        Cli.validate_and_coalesce(a, s)
+      }.to raise_exception(ConfigError, "cannot skip staging nor enrich in stream enrich mode. Either skip staging_stream_enrich or resume from shred")
+    end
+
+    it 'should reject --resume-from enrich in stream enrich mode' do
+      a[:resume_from] = 'enrich'
+      expect {
+        Cli.validate_and_coalesce(a, s)
+      }.to raise_exception(ConfigError, "cannot resume from enrich in stream enrich mode")
+    end
+
+    it 'should reject --skip archive_raw in stream enrich mode' do
+      a[:skip] = [ 'archive_raw' ]
+      expect {
+        Cli.validate_and_coalesce(a, s)
+      }.to raise_exception(ConfigError, "cannot skip nor resume from archive_raw in stream enrich mode")
+    end
+  end
 end

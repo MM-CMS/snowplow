@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2017 Snowplow Analytics Ltd. All rights reserved.
+ * Copyright (c) 2012-2018 Snowplow Analytics Ltd. All rights reserved.
  *
  * This program is licensed to you under the Apache License Version 2.0, and
  * you may not use this file except in compliance with the Apache License
@@ -12,13 +12,17 @@
  * implied.  See the Apache License Version 2.0 for the specific language
  * governing permissions and limitations there under.
  */
-
-lazy val root = project.in(file("."))
+// =======================================================
+// scalafmt: {align.tokens = [":="]}
+// =======================================================
+lazy val root = project
+  .in(file("."))
   .settings(
     name        := "snowplow-common-enrich",
-    version     := "0.25.0",
+    version     := "0.35.0",
     description := "Common functionality for enriching raw Snowplow events"
   )
+  .settings(BuildSettings.formatting)
   .settings(BuildSettings.buildSettings)
   .settings(BuildSettings.publishSettings)
   .settings(
@@ -37,6 +41,8 @@ lazy val root = project.in(file("."))
       Dependencies.Libraries.uaParser,
       Dependencies.Libraries.postgresDriver,
       Dependencies.Libraries.mysqlConnector,
+      Dependencies.Libraries.jaywayJsonpath,
+      Dependencies.Libraries.iabClient,
       // Scala
       Dependencies.Libraries.scalaz7,
       Dependencies.Libraries.snowplowRawEvent,
@@ -50,9 +56,7 @@ lazy val root = project.in(file("."))
       Dependencies.Libraries.scalaUri,
       Dependencies.Libraries.scalaForex,
       Dependencies.Libraries.scalaWeather,
-      Dependencies.Libraries.akka,
-      Dependencies.Libraries.akkaHttp,
-      Dependencies.Libraries.akkaHttpCore,
+      Dependencies.Libraries.scalaj,
       Dependencies.Libraries.gatlingJsonpath,
       // Scala (test only)
       Dependencies.Libraries.specs2,

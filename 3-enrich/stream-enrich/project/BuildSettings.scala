@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2016 Snowplow Analytics Ltd. All rights reserved.
+ * Copyright (c) 2013-2018 Snowplow Analytics Ltd. All rights reserved.
  *
  * This program is licensed to you under the Apache License Version 2.0,
  * and you may not use this file except in compliance with the Apache License Version 2.0.
@@ -15,42 +15,45 @@
 import sbt._
 import Keys._
 
+// Scalafmt plugin
+import com.lucidchart.sbt.scalafmt.ScalafmtPlugin._
+import com.lucidchart.sbt.scalafmt.ScalafmtCorePlugin.autoImport._
+
 object BuildSettings {
 
-  // Basic settings for our app
-  lazy val basicSettings = Seq[Setting[_]](
-    organization          :=  "com.snowplowanalytics",
-    version               :=  "0.10.0",
-    description           :=  "The Snowplow Enrichment process, implemented as an Amazon Kinesis app",
-    scalaVersion          :=  "2.10.1",
-    scalacOptions         :=  Seq("-deprecation", "-encoding", "utf8",
-                                  "-feature", "-target:jvm-1.7"),
-    scalacOptions in Test :=  Seq("-Yrangepos"),
-    resolvers             ++= Dependencies.resolutionRepos
+  lazy val compilerOptions = Seq(
+    "-deprecation",
+    "-encoding", "UTF-8",
+    "-feature",
+    "-language:existentials",
+    "-language:higherKinds",
+    "-language:implicitConversions",
+    "-unchecked",
+    "-Yno-adapted-args",
+    "-Ywarn-dead-code",
+    "-Ywarn-numeric-widen",
+    "-Ywarn-unused-import",
+    "-Xfuture",
+    "-Xlint"
   )
 
-  // Makes our SBT app settings available from within the app
-  lazy val scalifySettings = Seq(sourceGenerators in Compile <+= (sourceManaged in Compile, version, name, organization) map { (d, v, n, o) =>
-    val file = d / "settings.scala"
-    IO.write(file, """package com.snowplowanalytics.snowplow.enrich.kinesis.generated
-      |object Settings {
-      |  val organization = "%s"
-      |  val version = "%s"
-      |  val name = "%s"
-      |}
-      |""".stripMargin.format(o, v, n))
-    Seq(file)
-  })
+  lazy val javaCompilerOptions = Seq(
+    "-source", "1.8",
+    "-target", "1.8"
+  )
 
   // sbt-assembly settings for building a fat jar
-  import sbtassembly.Plugin._
-  import AssemblyKeys._
-  lazy val sbtAssemblySettings = assemblySettings ++ Seq(
-    // Executable jarfile
-    assemblyOption in assembly ~= { _.copy(prependShellScript = Some(defaultShellScript)) },
-    // Name it as an executable
-    jarName in assembly := { s"${name.value}-${version.value}" }
+  import sbtassembly.AssemblyPlugin.autoImport._
+  lazy val sbtAssemblySettings = Seq(
+    assemblyJarName in assembly := { s"${moduleName.value}-${version.value}.jar" }
+  )
+  lazy val formatting = Seq(
+    scalafmtConfig    := file(".scalafmt.conf"),
+    scalafmtOnCompile := true,
+    scalafmtVersion   := "1.3.0"
   )
 
-  lazy val buildSettings = basicSettings ++ scalifySettings ++ sbtAssemblySettings
+  lazy val addExampleConfToTestCp = Seq(
+    unmanagedClasspath in Test += baseDirectory.value.getParentFile / "examples"
+  )
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2017 Snowplow Analytics Ltd. All rights reserved.
+ * Copyright (c) 2012-2018 Snowplow Analytics Ltd. All rights reserved.
  *
  * This program is licensed to you under the Apache License Version 2.0,
  * and you may not use this file except in compliance with the Apache License Version 2.0.
@@ -36,7 +36,7 @@ object TransactionItemCfLineSpec {
     "cloudfront",
     etlVersion,
     null, // No user_id set
-    "255.255.255.255",
+    "104851162466b684c03faccae36f42622bead233",
     null, // Not set (legacy input line)
     "a279872d76480afb",
     "1",
@@ -90,12 +90,12 @@ object TransactionItemCfLineSpec {
     null, //
     null, //
     null, //
-    "order-123",    // Transaction item fields are set
-    "PBZ1001",      //
+    "order-123", // Transaction item fields are set
+    "PBZ1001", //
     "Blue t-shirt", //
-    "APPAREL",      //
-    "2000",         //
-    "2",            //
+    "APPAREL", //
+    "2000", //
+    "2", //
     null, // Page ping fields are empty
     null, //
     null, //
@@ -130,7 +130,7 @@ object TransactionItemCfLineSpec {
     "1080",
     null, // Not set (legacy input lines)
     null, //
-    null  //
+    null //
   )
 }
 

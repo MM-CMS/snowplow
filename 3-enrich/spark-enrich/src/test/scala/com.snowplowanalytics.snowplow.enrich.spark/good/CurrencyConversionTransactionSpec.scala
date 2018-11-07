@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2017 Snowplow Analytics Ltd. All rights reserved.
+ * Copyright (c) 2012-2018 Snowplow Analytics Ltd. All rights reserved.
  *
  * This program is licensed to you under the Apache License Version 2.0,
  * and you may not use this file except in compliance with the Apache License Version 2.0.
@@ -20,7 +20,7 @@ import org.specs2.mutable.Specification
 object CurrencyConversionTransactionSpec {
   import EnrichJobSpec._
   val lines = Lines(
-    "2012-05-27  11:35:53  DFW3  3343  70.46.123.145 GET d3gs014xn8p70.cloudfront.net  /ice.png  200 - Mozilla/5.0%20(Windows%20NT%206.1;%20WOW64;%20rv:12.0)%20Gecko/20100101%20Firefox/12.0  &e=tr&tr_id=order-123&tr_af=psychicbazaar&tr_tt=8000&tr_tx=200&tr_sh=50&tr_ci=London&tr_st=England&tr_co=UK&dtm=1364177017342&tr_cu=USD&tid=028288&duid=a279872d76480afb&vid=1&aid=CFe23a&lang=en-GB&f_pdf=0&f_qt=1&f_realp=0&f_wma=1&f_dir=0&f_fla=1&f_java=1&f_gears=0&f_ag=0&res=1920x1080&cookie=1&url=http%3A%2F%2Fwww.psychicbazaar.com%2Foracles%2F119-psycards-book-and-deck-starter-pack.html%3Fview%3Dprint%23detail&cv=clj-0.3.0-tom-0.0.2"
+    "2012-05-27  11:35:53  DFW3  3343  216.160.83.56 GET d3gs014xn8p70.cloudfront.net  /ice.png  200 - Mozilla/5.0%20(Windows%20NT%206.1;%20WOW64;%20rv:12.0)%20Gecko/20100101%20Firefox/12.0  &e=tr&tr_id=order-123&tr_af=psychicbazaar&tr_tt=8000&tr_tx=200&tr_sh=50&tr_ci=London&tr_st=England&tr_co=UK&dtm=1364177017342&tr_cu=USD&tid=028288&duid=a279872d76480afb&vid=1&aid=CFe23a&lang=en-GB&f_pdf=0&f_qt=1&f_realp=0&f_wma=1&f_dir=0&f_fla=1&f_java=1&f_gears=0&f_ag=0&res=1920x1080&cookie=1&url=http%3A%2F%2Fwww.psychicbazaar.com%2Foracles%2F119-psycards-book-and-deck-starter-pack.html%3Fview%3Dprint%23detail&cv=clj-0.3.0-tom-0.0.2"
   )
 
   val expected = List(
@@ -37,22 +37,22 @@ object CurrencyConversionTransactionSpec {
     "clj-0.3.0-tom-0.0.2",
     etlVersion,
     null, // No user_id set
-    "x.x.x.x",
+    "f57fc380f09a03e4190ed4f5234fe14055b7b6ca",
     null, // Not set (legacy input line)
     "a279872d76480afb",
     "1",
     null, // No network_userid set
     "US", // US geolocation
-    "FL",
-    "Delray Beach",
+    "WA",
+    "Milton",
+    "98354",
+    "47.2513",
+    "-122.3149",
+    "Washington",
     null,
-    "26.461502",
-    "-80.0728",
-    "Florida",
     null,
     null,
-    null,
-    "Cable/DSL", // Using the MaxMind netspeed lookup service
+    null, // Using the MaxMind netspeed lookup service
     "http://www.psychicbazaar.com/oracles/119-psycards-book-and-deck-starter-pack.html?view=print#detail",
     null, // No page title for transactions
     null,
@@ -83,14 +83,14 @@ object CurrencyConversionTransactionSpec {
     null, //
     null, //
     null, // Unstructured event field empty
-    "order-123",     // Transaction fields are set
+    "order-123", // Transaction fields are set
     "psychicbazaar", //
-    "8000",          //
-    "200",           //
-    "50",            //
-    "London",        //
-    "England",       //
-    "UK",            //
+    "8000", //
+    "200", //
+    "50", //
+    "London", //
+    "England", //
+    "UK", //
     null, // Transaction item fields empty
     null, //
     null, //
@@ -132,21 +132,21 @@ object CurrencyConversionTransactionSpec {
     null, // Not set (legacy input lines)
     null,
     null,
-    "USD",     // tr_currency
+    "USD", // tr_currency
     "6384.46", // tr_total_base
-    "159.61",  // tr_tax_base
-    "39.90",   // tr_shipping_base
-    null,      // ti_currency
-    null,      // ti_price_base
-    "EUR",     // base_currency
-    "America/New_York",
+    "159.61", // tr_tax_base
+    "39.90", // tr_shipping_base
+    null, // ti_currency
+    null, // ti_price_base
+    "EUR", // base_currency
+    "America/Los_Angeles",
     null,
     null,
     null,
     null,
     null,
     null,
-    """{"schema":"iglu:com.snowplowanalytics.snowplow/contexts/jsonschema/1-0-1","data":[{"schema":"iglu:com.snowplowanalytics.snowplow/ua_parser_context/jsonschema/1-0-0","data":{"useragentFamily":"Firefox","useragentMajor":"12","useragentMinor":"0","useragentPatch":null,"useragentVersion":"Firefox 12.0","osFamily":"Windows 7","osMajor":null,"osMinor":null,"osPatch":null,"osPatchMinor":null,"osVersion":"Windows 7","deviceFamily":"Other"}}]}""",
+    """{"schema":"iglu:com.snowplowanalytics.snowplow/contexts/jsonschema/1-0-1","data":[{"schema":"iglu:com.snowplowanalytics.snowplow/ua_parser_context/jsonschema/1-0-0","data":{"useragentFamily":"Firefox","useragentMajor":"12","useragentMinor":"0","useragentPatch":null,"useragentVersion":"Firefox 12.0","osFamily":"Windows","osMajor":"7","osMinor":null,"osPatch":null,"osPatchMinor":null,"osVersion":"Windows 7","deviceFamily":"Other"}}]}""",
     null,
     "2012-05-27 11:35:53.000",
     "com.snowplowanalytics.snowplow",
@@ -165,8 +165,13 @@ class CurrencyConversionTransactionSpec extends Specification with EnrichJobSpec
   // Only run currency enrichment tests if the credentials exist in an environment variable
   if (sys.env.get("OER_KEY").isDefined) {
     "A job which processes a CloudFront file containing 1 valid transaction" should {
-      runEnrichJob(CurrencyConversionTransactionSpec.lines, "cloudfront", "4", true,
-        List("geo", "netspeed"), true)
+      runEnrichJob(
+        CurrencyConversionTransactionSpec.lines,
+        "cloudfront",
+        "4",
+        true,
+        List("geo"),
+        true)
 
       "correctly output 1 transaction" in {
         val Some(goods) = readPartFile(dirs.output)
@@ -182,6 +187,7 @@ class CurrencyConversionTransactionSpec extends Specification with EnrichJobSpec
       }
     }
   } else {
-    println("WARNING: Skipping CurrencyConversionTransactionSpec as no OER_KEY environment variable was found for authentication")
+    println(
+      "WARNING: Skipping CurrencyConversionTransactionSpec as no OER_KEY environment variable was found for authentication")
   }
 }

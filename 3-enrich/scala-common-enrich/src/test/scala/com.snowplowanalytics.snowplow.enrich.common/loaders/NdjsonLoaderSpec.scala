@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Snowplow Analytics Ltd. All rights reserved.
+ * Copyright (c) 2015-2018 Snowplow Analytics Ltd. All rights reserved.
  *
  * This program is licensed to you under the Apache License Version 2.0,
  * and you may not use this file except in compliance with the Apache License Version 2.0.
@@ -17,7 +17,6 @@ import org.specs2.scalaz.ValidationMatchers
 
 import scalaz._
 import Scalaz._
-
 
 class NdjsonLoaderSpec extends Specification with ValidationMatchers {
 
@@ -39,7 +38,8 @@ class NdjsonLoaderSpec extends Specification with ValidationMatchers {
 
     "fail if multiple lines passed in as one line" in {
       val lines = List("""{"key":"value1"}""", """{"key":"value2"}""")
-      NdjsonLoader("com.abc/v1").toCollectorPayload(lines.mkString("\n")) must beFailing(NonEmptyList("Too many lines! Expected single line"))
+      NdjsonLoader("com.abc/v1").toCollectorPayload(lines.mkString("\n")) must beFailing(
+        NonEmptyList("Too many lines! Expected single line"))
     }
 
   }

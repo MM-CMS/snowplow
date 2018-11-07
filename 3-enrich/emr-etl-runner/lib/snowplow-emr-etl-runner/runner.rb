@@ -28,6 +28,61 @@ module Snowplow
 
       include Monitoring::Logging
 
+      # Decide what steps should be submitted to EMR job
+      Contract ArrayOf[String], Maybe[String], Maybe[String] => EmrSteps
+      def self.get_steps(skips, resume, enriched_stream)
+        {
+          :staging => (enriched_stream.nil? and resume.nil? and not skips.include?('staging')),
+          :enrich => (enriched_stream.nil? and (resume.nil? or resume == 'enrich') and not skips.include?('enrich')),
+          :staging_stream_enrich => ((not enriched_stream.nil? and resume.nil?) and not skips.include?('staging_stream_enrich')),
+          :shred => ((resume.nil? or [ 'enrich', 'shred' ].include?(resume)) and
+            not skips.include?('shred')),
+          :es => ((resume.nil? or [ 'enrich', 'shred', 'elasticsearch' ].include?(resume)) and
+            not skips.include?('elasticsearch')),
+          :archive_raw => (enriched_stream.nil? and (resume.nil? or [ 'enrich', 'shred', 'elasticsearch', 'archive_raw' ].include?(resume)) and
+            not skips.include?('archive_raw')),
+          :rdb_load => ((resume.nil? or [ 'enrich', 'shred', 'elasticsearch', 'archive_raw', 'rdb_load' ].include?(resume)) and
+            not skips.include?('rdb_load')),
+          :consistency_check => ((resume.nil? or [ 'enrich', 'shred', 'elasticsearch', 'archive_raw', 'rdb_load', 'consistency_check' ].include?(resume)) and
+            not skips.include?('consistency_check')),
+          :load_manifest_check => ((resume.nil? or [ 'enrich', 'shred', 'elasticsearch', 'archive_raw', 'rdb_load'  ].include?(resume)) and
+            not skips.include?('load_manifest_check')),
+          :analyze => ((resume.nil? or [ 'enrich', 'shred', 'elasticsearch', 'archive_raw', 'rdb_load', 'consistency_check', 'load_manifest_check', 'analyze' ].include?(resume)) and
+            not skips.include?('analyze')),
+          :archive_enriched => ((resume.nil? or
+            [ 'enrich', 'shred', 'elasticsearch', 'archive_raw', 'rdb_load', 'consistency_check', 'analyze', 'archive_enriched' ].include?(resume)) and
+            not skips.include?('archive_enriched')),
+          :archive_shredded => (not skips.include?('archive_shredded'))
+        }
+      end
+
+
+      Contract HashOf[Symbol, Bool], ArrayOf[String] => RdbLoaderSteps
+      def self.get_rdbloader_steps(steps, inclusions)
+        s = {
+          :skip => [],
+          :include => []
+        }
+
+        if not steps[:analyze]
+          s[:skip] << "analyze"
+        end
+
+        if not steps[:consistency_check]
+          s[:skip] << "consistency_check"
+        end
+
+        if not steps[:load_manifest_check]
+          s[:skip] << "load_manifest_check"
+        end
+
+        if inclusions.include?("vacuum")
+          s[:include] << "vacuum"
+        end
+
+        s
+      end
+
       # Initialize the class.
       Contract ArgsHash, ConfigHash, ArrayOf[String], String, ArrayOf[JsonFileHash] => Runner
       def initialize(args, config, enrichments_array, resolver, targets_array)
@@ -48,47 +103,38 @@ module Snowplow
       # Our core flow
       Contract None => nil
       def run
-
-        resume = @args[:resume_from]
-        skips = @args[:skip]
-        steps = {
-          :staging => (resume.nil? and not skips.include?('staging')),
-          :enrich => ((resume.nil? or resume == 'enrich') and not skips.include?('enrich')),
-          :shred => ((resume.nil? or [ 'enrich', 'shred' ].include?(resume)) and
-            not skips.include?('shred')),
-          :es => ((resume.nil? or [ 'enrich', 'shred', 'elasticsearch' ].include?(resume)) and
-            not skips.include?('elasticsearch')),
-          :archive_raw => ((resume.nil? or [ 'enrich', 'shred', 'elasticsearch', 'archive_raw' ].include?(resume)) and
-            not skips.include?('archive_raw')),
-          :rdb_load => ((resume.nil? or [ 'enrich', 'shred', 'elasticsearch', 'archive_raw', 'rdb_load' ].include?(resume)) and
-            not skips.include?('rdb_load')),
-          :analyze => ((resume.nil? or [ 'enrich', 'shred', 'elasticsearch', 'archive_raw', 'rdb_load', 'analyze' ].include?(resume)) and
-            not skips.include?('analyze')),
-          :archive_enriched => (not skips.include?('archive_enriched'))
-        }
+        steps = Runner.get_steps(@args[:skip], @args[:resume_from], @config[:aws][:s3][:buckets][:enriched][:stream])
 
         archive_enriched = if not steps[:archive_enriched]
           'skip'
-        elsif steps[:enrich]
+        elsif steps[:enrich] || steps[:staging_stream_enrich]
+          'pipeline'
+        else
+          'recover'
+        end
+
+        archive_shredded = if not steps[:archive_shredded]
+          'skip'
+        elsif steps[:shred]
           'pipeline'
         else
           'recover'
         end
 
         lock = get_lock(@args[:lock], @args[:consul])
-        if not lock.nil?
+        if not lock.nil? and not @args[:ignore_lock_on_start]
           lock.try_lock
         end
 
         # Keep relaunching the job until it succeeds or fails for a reason other than a bootstrap failure
         tries_left = @config[:aws][:emr][:bootstrap_failure_tries]
-        rdbloader_steps = get_rdbloader_steps(steps, @args[:include])
+        rdbloader_steps = Runner.get_rdbloader_steps(steps, @args[:include])
         while true
           begin
             tries_left -= 1
-            job = EmrJob.new(@args[:debug], steps[:staging], steps[:enrich], steps[:shred], steps[:es],
-              steps[:archive_raw], steps[:rdb_load], archive_enriched, @config, @enrichments_array,
-              @resolver_config, @targets, rdbloader_steps)
+            job = EmrJob.new(@args[:debug], steps[:staging], steps[:enrich], steps[:staging_stream_enrich], steps[:shred], steps[:es],
+              steps[:archive_raw], steps[:rdb_load], archive_enriched, archive_shredded, @config,
+              @enrichments_array, @resolver_config, @targets, rdbloader_steps)
             job.run(@config)
             break
           rescue BootstrapFailureError => bfe
@@ -101,6 +147,12 @@ module Snowplow
             else
               raise
             end
+          rescue DirectoryNotEmptyError, NoDataToProcessError => e
+            # unlock on no-op
+            if not lock.nil?
+              lock.unlock
+            end
+            raise e
           end
         end
 
@@ -133,28 +185,6 @@ module Snowplow
         elsif bucketData.class == [].class
           bucketData.each {|b| add_trailing_slashes(b)}
         end
-      end
-
-      Contract HashOf[Symbol, Bool], ArrayOf[String] => RdbLoaderSteps
-      def get_rdbloader_steps(steps, inclusions)
-        s = {
-          :skip => [],
-          :include => []
-        }
-
-        if not steps[:analyze]
-          s[:skip] << "analyze"
-        end
-
-        if not steps[:shred]
-          s[:skip] << "shred"
-        end
-
-        if inclusions.include?("vacuum")
-          s[:include] << "vacuum"
-        end
-
-        s
       end
 
       # Validate array of self-describing JSONs

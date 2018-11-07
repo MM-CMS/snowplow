@@ -1,6 +1,5 @@
-
 /*
- * Copyright (c) 2012-2017 Snowplow Analytics Ltd. All rights reserved.
+ * Copyright (c) 2012-2018 Snowplow Analytics Ltd. All rights reserved.
  *
  * This program is licensed to you under the Apache License Version 2.0,
  * and you may not use this file except in compliance with the Apache License Version 2.0.
@@ -35,17 +34,20 @@ trait SparkSpec extends BeforeAfterAll {
     .set("spark.kryo.registrationRequired", "true")
     .registerKryoClasses(EnrichJob.classesToRegister)
   var spark: SparkSession =
-    SparkSession.builder()
+    SparkSession
+      .builder()
       .config(conf)
       .getOrCreate()
 
   val hadoopConfig = spark.sparkContext.hadoopConfiguration
   hadoopConfig.set("io.compression.codecs", classOf[com.hadoop.compression.lzo.LzopCodec].getName())
-  hadoopConfig.set("io.compression.codec.lzo.class",
+  hadoopConfig.set(
+    "io.compression.codec.lzo.class",
     classOf[com.hadoop.compression.lzo.LzoCodec].getName())
 
   override def beforeAll(): Unit =
-    SparkSession.builder()
+    SparkSession
+      .builder()
       .config(conf)
       .getOrCreate()
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2016 Snowplow Analytics Ltd. All rights reserved.
+ * Copyright (c) 2012-2018 Snowplow Analytics Ltd. All rights reserved.
  *
  * This program is licensed to you under the Apache License Version 2.0,
  * and you may not use this file except in compliance with the Apache License Version 2.0.
@@ -29,16 +29,17 @@ import org.json4s._
 import org.json4s.JsonDSL._
 
 // Iglu
-import iglu.client.{
-  SchemaCriterion,
-  SchemaKey
-}
+import iglu.client.{SchemaCriterion, SchemaKey}
 
 // This project
 import utils.ScalazJson4sUtils
 
 object HttpHeaderExtractorEnrichmentConfig extends ParseableEnrichment {
-  val supportedSchema = SchemaCriterion("com.snowplowanalytics.snowplow.enrichments", "http_header_extractor_config", "jsonschema", 1, 0)
+
+  implicit val formats = DefaultFormats
+
+  val supportedSchema =
+    SchemaCriterion("com.snowplowanalytics.snowplow.enrichments", "http_header_extractor_config", "jsonschema", 1, 0)
 
   /**
    * Creates a HttpHeaderExtractorEnrichment instance from a JValue.
@@ -48,14 +49,13 @@ object HttpHeaderExtractorEnrichmentConfig extends ParseableEnrichment {
    *        Must be a supported SchemaKey for this enrichment
    * @return a configured HeaderExtractorEnrichment instance
    */
-  def parse(config: JValue, schemaKey: SchemaKey): ValidatedNelMessage[HttpHeaderExtractorEnrichment] = {
+  def parse(config: JValue, schemaKey: SchemaKey): ValidatedNelMessage[HttpHeaderExtractorEnrichment] =
     isParseable(config, schemaKey).flatMap(conf => {
       (for {
         headersPattern <- ScalazJson4sUtils.extract[String](config, "parameters", "headersPattern")
         enrich = HttpHeaderExtractorEnrichment(headersPattern)
       } yield enrich).toValidationNel
     })
-  }
 }
 
 /**
@@ -63,12 +63,9 @@ object HttpHeaderExtractorEnrichmentConfig extends ParseableEnrichment {
  *
  * @param headersPattern Names of the headers to be extracted
  */
-case class HttpHeaderExtractorEnrichment(
-  headersPattern: String) extends Enrichment {
+case class HttpHeaderExtractorEnrichment(headersPattern: String) extends Enrichment {
 
   case class Header(name: String, value: String)
-
-  val version = new DefaultArtifactVersion("0.1.0")
 
   def extract(headers: List[String]): List[JsonAST.JObject] = {
     val httpHeaders = headers.flatMap { header =>
@@ -82,8 +79,8 @@ case class HttpHeaderExtractorEnrichment(
     httpHeaders.map { header =>
       (("schema" -> "iglu:org.ietf/http_header/jsonschema/1-0-0") ~
         ("data" ->
-          ("name" -> header.name.trim) ~
-          ("value" -> header.value.trim)))
+          ("name"    -> header.name.trim) ~
+            ("value" -> header.value.trim)))
     }
   }
 }

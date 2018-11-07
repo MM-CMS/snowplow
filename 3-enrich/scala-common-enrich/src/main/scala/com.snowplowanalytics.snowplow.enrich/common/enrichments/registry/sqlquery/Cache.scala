@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2016 Snowplow Analytics Ltd. All rights reserved.
+ * Copyright (c) 2012-2018 Snowplow Analytics Ltd. All rights reserved.
  *
  * This program is licensed to you under the Apache License Version 2.0,
  * and you may not use this file except in compliance with the Apache License Version 2.0.
@@ -47,7 +47,7 @@ case class Cache(size: Int, ttl: Int) {
    * @param key HTTP URL
    * @return validated JSON as it was fetched from DB if found
    */
-  def get(key: IntMap[ExtractedValue]): Option[ThrowableXor[List[JObject]]] = {
+  def get(key: IntMap[ExtractedValue]): Option[ThrowableXor[List[JObject]]] =
     cache.get(key) match {
       case Some((value, _)) if ttl == 0 => Some(value)
       case Some((value, created)) =>
@@ -59,7 +59,6 @@ case class Cache(size: Int, ttl: Int) {
         }
       case _ => None
     }
-  }
 
   /**
    * Put a value into cache with current timestamp

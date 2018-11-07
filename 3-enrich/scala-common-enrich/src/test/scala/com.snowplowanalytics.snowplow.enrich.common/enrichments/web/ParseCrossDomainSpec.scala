@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2014 Snowplow Analytics Ltd. All rights reserved.
+ * Copyright (c) 2012-2018 Snowplow Analytics Ltd. All rights reserved.
  *
  * This program is licensed to you under the Apache License Version 2.0,
  * and you may not use this file except in compliance with the Apache License Version 2.0.
@@ -24,7 +24,8 @@ import org.specs2.scalaz.ValidationMatchers
 import scalaz._
 import Scalaz._
 
-class ParseCrossDomainSpec extends Specification with DataTables with ValidationMatchers { def is = s2"""
+class ParseCrossDomainSpec extends Specification with DataTables with ValidationMatchers {
+  def is = s2"""
   This is a specification to test the parseCrossDomain function
   parseCrossDomain should return None when the querystring contains no _sp parameter           $e1
   parseCrossDomain should return a failure when the _sp timestamp is unparseable               $e2
@@ -44,7 +45,8 @@ class ParseCrossDomainSpec extends Specification with DataTables with Validation
     PageEnrichments.parseCrossDomain(Map("_sp" -> "abc")) must beSuccessful(("abc".some, None))
 
   def e4 =
-    PageEnrichments.parseCrossDomain(Map("_sp" -> "abc.1426245561368")) must beSuccessful(("abc".some, "2015-03-13 11:19:21.368".some))
+    PageEnrichments.parseCrossDomain(Map("_sp" -> "abc.1426245561368")) must beSuccessful(
+      ("abc".some, "2015-03-13 11:19:21.368".some))
 
   def e5 =
     PageEnrichments.parseCrossDomain(Map("_sp" -> "")) must beSuccessful(None -> None)

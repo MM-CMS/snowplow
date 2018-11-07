@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2014 Snowplow Analytics Ltd. All rights reserved.
+ * Copyright (c) 2012-2018 Snowplow Analytics Ltd. All rights reserved.
  *
  * This program is licensed to you under the Apache License Version 2.0,
  * and you may not use this file except in compliance with the Apache License Version 2.0.
@@ -34,7 +34,8 @@ import org.specs2.scalaz.ValidationMatchers
 /**
  * Tests the anonymzeIp function
  */
-class JavascriptScriptEnrichmentSpec extends Specification with ValidationMatchers { def is = s2"""
+class JavascriptScriptEnrichmentSpec extends Specification with ValidationMatchers {
+  def is = s2"""
   This is a specification to test the JavascriptScriptEnrichment
   Compiling an invalid JavaScript script should fail              $e1
   A JavaScript script should be able to throw an exception safely $e2
@@ -66,7 +67,7 @@ class JavascriptScriptEnrichmentSpec extends Specification with ValidationMatche
   def buildEvent(appId: String): EnrichedEvent = {
     val e = new EnrichedEvent()
     e.platform = "server"
-    e.app_id = appId
+    e.app_id   = appId
     e
   }
 
@@ -85,7 +86,7 @@ class JavascriptScriptEnrichmentSpec extends Specification with ValidationMatche
   def e3 = {
     val event = buildEvent("secret")
 
-    val actual = PreparedEnrichment.process(event)
+    val actual   = PreparedEnrichment.process(event)
     val expected = """{"schema":"iglu:com.acme/foo/jsonschema/1-0-0","data":{"appIdUpper":"SECRET"}}"""
 
     actual must beSuccessful.like { case head :: Nil => compact(render(head)) must_== compact(render(parse(expected))) }

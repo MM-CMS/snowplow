@@ -3,15 +3,16 @@
 [![Build Status][travis-image]][travis]
 [![Release][release-image]][releases]
 [![License][license-image]][license]
+[![Join the chat at https://gitter.im/snowplow/snowplow][gitter-image]][gitter]
 
-<img src="https://d3i6fms1cm1j0i.cloudfront.net/github-wiki/images/snowplow-logo-large.png"
+<img src="https://d3i6fms1cm1j0i.cloudfront.net/github-wiki/images/snowplow-new-logo-large.png"
  alt="Snowplow logo" title="Snowplow" align="right" />
 
 Snowplow is an enterprise-strength marketing and product analytics platform. It does three things:
 
 1. Identifies your users, and tracks the way they engage with your website or application
 2. Stores your users' behavioural data in a scalable "event data warehouse" you control: in Amazon S3 and (optionally) Amazon Redshift or Postgres
-3. Lets you leverage the biggest range of tools to analyze that data, including big data tools (e.g. Spark) via EMR or more traditional tools e.g. Looker, Mode, Caravel, Re:dash to analyze that behavioural data
+3. Lets you leverage the biggest range of tools to analyze that data, including big data tools (e.g. Spark) via EMR or more traditional tools e.g. Looker, Mode, Superset, Re:dash to analyze that behavioural data
 
 **To find out more, please check out the [Snowplow website][website] and the [Snowplow wiki][wiki].**
 
@@ -34,14 +35,12 @@ To briefly explain these six sub-systems:
 
 ## Quickstart
 
-Assuming git, **[Vagrant][vagrant-install]** and **[VirtualBox][virtualbox-install]** installed:
+Assuming git and [SBT](https://www.scala-sbt.org/) installed:
 
 ```bash
- host$ git clone https://github.com/snowplow/snowplow.git
- host$ cd snowplow
- host$ vagrant up && vagrant ssh
-guest$ cd /vagrant/3-enrich/scala-common-enrich
-guest$ sbt test
+$ git clone https://github.com/snowplow/snowplow.git
+$ cd snowplow/3-enrich/scala-common-enrich
+$ sbt test
 ```
 
 ## Find out more
@@ -62,7 +61,7 @@ Check out the **[Talk to us][talk-to-us]** page on our wiki.
 
 ## Copyright and license
 
-Snowplow is copyright 2012-2017 Snowplow Analytics Ltd.
+Snowplow is copyright 2012-2018 Snowplow Analytics Ltd.
 
 Licensed under the **[Apache License, Version 2.0][license]** (the "License");
 you may not use this software except in compliance with the License.
@@ -76,11 +75,14 @@ limitations under the License.
 [travis-image]: https://travis-ci.org/snowplow/snowplow.png?branch=master
 [travis]: http://travis-ci.org/snowplow/snowplow
 
-[release-image]: https://img.shields.io/badge/release-91_Stonehenge-orange.svg?style=flat
+[release-image]: https://img.shields.io/badge/release-111_Selinunte-orange.svg?style=flat
 [releases]: https://github.com/snowplow/snowplow/releases
 
 [license-image]: http://img.shields.io/badge/license-Apache--2-blue.svg?style=flat
 [license]: http://www.apache.org/licenses/LICENSE-2.0
+
+[gitter-image]: https://badges.gitter.im/snowplow/snowplow.svg
+[gitter]: https://gitter.im/snowplow/snowplow?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge
 
 [website]: http://snowplowanalytics.com
 [wiki]: https://github.com/snowplow/snowplow/wiki
@@ -95,9 +97,6 @@ limitations under the License.
 [collector-logs]: https://github.com/snowplow/snowplow/wiki/Collector-logging-formats
 [data-structure]: https://github.com/snowplow/snowplow/wiki/canonical-event-model
 [looker]: http://www.looker.com/
-
-[vagrant-install]: http://docs.vagrantup.com/v2/installation/index.html
-[virtualbox-install]: https://www.virtualbox.org/wiki/Downloads
 
 [techdocs-image]: https://d3i6fms1cm1j0i.cloudfront.net/github/images/techdocs.png
 [setup-image]: https://d3i6fms1cm1j0i.cloudfront.net/github/images/setup.png
