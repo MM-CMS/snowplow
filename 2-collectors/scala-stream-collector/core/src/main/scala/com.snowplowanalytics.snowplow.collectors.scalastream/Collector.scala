@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2018 Snowplow Analytics Ltd. All rights reserved.
+ * Copyright (c) 2013-2019 Snowplow Analytics Ltd. All rights reserved.
  *
  * This program is licensed to you under the Apache License Version 2.0, and
  * you may not use this file except in compliance with the Apache License
@@ -19,13 +19,17 @@ package scalastream
 import java.io.File
 
 import akka.actor.ActorSystem
-import akka.http.scaladsl.Http
+import akka.http.scaladsl.{ConnectionContext, Http}
+import akka.http.scaladsl.model.StatusCodes
+import akka.http.scaladsl.server.Route
+import akka.http.scaladsl.server.Directives._
 import akka.stream.ActorMaterializer
-import com.typesafe.config.{ConfigFactory, Config}
+import com.snowplowanalytics.snowplow.collectors.scalastream.metrics._
+import com.snowplowanalytics.snowplow.collectors.scalastream.model._
+import com.typesafe.config.{Config, ConfigFactory}
+import com.typesafe.sslconfig.akka.AkkaSSLConfig
 import org.slf4j.LoggerFactory
 import pureconfig._
-
-import model._
 
 // Main entry point of the Scala collector.
 trait Collector {
@@ -67,16 +71,68 @@ trait Collector {
     implicit val materializer = ActorMaterializer()
     implicit val executionContext = system.dispatcher
 
-    val route = new CollectorRoute {
+    val collectorRoute = new CollectorRoute {
       override def collectorService = new CollectorService(collectorConf, sinks)
     }
 
-    Http().bindAndHandle(route.collectorRoute, collectorConf.interface, collectorConf.port)
-      .map { binding =>
-        log.info(s"REST interface bound to ${binding.localAddress}")
-      } recover { case ex =>
-        log.error("REST interface could not be bound to " +
-          s"${collectorConf.interface}:${collectorConf.port}", ex.getMessage)
+    val prometheusMetricsService = new PrometheusMetricsService(collectorConf.prometheusMetrics)
+
+    val metricsRoute = new MetricsRoute {
+      override def metricsService: MetricsService = prometheusMetricsService
+    }
+
+    val metricsDirectives = new MetricsDirectives {
+      override def metricsService: MetricsService = prometheusMetricsService
+    }
+
+    val routes =
+      if (collectorConf.prometheusMetrics.enabled)
+        metricsRoute.metricsRoute ~ metricsDirectives.logRequest(collectorRoute.collectorRoute)
+      else collectorRoute.collectorRoute
+
+    lazy val redirectRoutes =
+      scheme("http") {
+        extract(_.request.uri) { uri =>
+          redirect(
+            uri.copy(scheme = "https").withPort(collectorConf.ssl.port),
+            StatusCodes.MovedPermanently
+          )
+        }
       }
+
+    def bind(
+        rs: Route,
+        interface: String,
+        port: Int,
+        connectionContext: ConnectionContext = ConnectionContext.noEncryption()
+    ) =
+      Http().bindAndHandle(rs, interface, port, connectionContext)
+        .map { binding =>
+          log.info(s"REST interface bound to ${binding.localAddress}")
+        } recover { case ex =>
+          log.error( "REST interface could not be bound to " +
+            s"${collectorConf.interface}:${collectorConf.port}", ex.getMessage)
+        }
+
+    lazy val secureEndpoint =
+      bind(routes,
+           collectorConf.interface,
+           collectorConf.ssl.port,
+           SSLConfig.secureConnectionContext(system, AkkaSSLConfig())
+      )
+
+    lazy val unsecureEndpoint = (routes: Route) =>
+      bind(routes, collectorConf.interface, collectorConf.port)
+
+    collectorConf.ssl match {
+      case SSLConfig(true, true, port) =>
+        unsecureEndpoint(redirectRoutes)
+        secureEndpoint
+      case SSLConfig(true, false, port) =>
+        unsecureEndpoint(routes)
+        secureEndpoint
+      case _ =>
+        unsecureEndpoint(routes)
+    }
   }
 }

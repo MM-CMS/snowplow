@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2018 Snowplow Analytics Ltd. All rights reserved.
+ * Copyright (c) 2013-2019 Snowplow Analytics Ltd. All rights reserved.
  *
  * This program is licensed to you under the Apache License Version 2.0, and
  * you may not use this file except in compliance with the Apache License
@@ -23,6 +23,8 @@ import org.json4s.jackson.JsonMethods._
 import org.specs2.matcher.{Expectable, Matcher}
 import scalaz._
 import Scalaz._
+import com.snowplowanalytics.snowplow.enrich.common.adapters.AdapterRegistry
+import com.snowplowanalytics.snowplow.enrich.common.adapters.registry.RemoteAdapter
 import common.outputs.EnrichedEvent
 import common.utils.JsonUtils
 import common.enrichments.EnrichmentRegistry
@@ -157,13 +159,14 @@ object SpecHelpers {
       streams = StreamsConfig(
         InConfig("raw"),
         OutConfig("enriched", Some("pii"), "bad", "partitionkey"),
-        Kafka("brokers", 1),
+        Kafka("brokers", 1, None, None),
         BufferConfig(1000L, 100L, 1200L),
         "appName"
       ),
+      None,
       monitoring = None
     )
-    new TestSource(config, resolver, enrichmentRegistry, None)
+    new TestSource(config, resolver, adapterRegistry, enrichmentRegistry, None)
   }
   val igluCentralDefaultConfig =
     """{
@@ -311,4 +314,6 @@ object SpecHelpers {
     s => s
   )
 
+  // Init AdapterRegistry with one RemoteAdapter used for integration tests
+  val adapterRegistry = new AdapterRegistry(Map(("remoteVendor", "v42") -> new RemoteAdapter("http://localhost:9090/", None, None)))
 }

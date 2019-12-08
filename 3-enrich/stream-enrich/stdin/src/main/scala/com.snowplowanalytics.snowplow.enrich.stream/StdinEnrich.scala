@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2018 Snowplow Analytics Ltd.
+ * Copyright (c) 2013-2019 Snowplow Analytics Ltd.
  * All rights reserved.
  *
  * This program is licensed to you under the Apache License Version 2.0,
@@ -25,8 +25,8 @@ import java.io.File
 import java.net.URI
 
 import scalaz.{Sink => _, Source => _, _}
-
 import common.enrichments.EnrichmentRegistry
+import common.adapters.AdapterRegistry
 import config.FileConfig
 import iglu.client.Resolver
 import model.{Credentials, StreamsConfig}
@@ -41,10 +41,11 @@ object StdinEnrich extends Enrich {
   override def getSource(
     streamsConfig: StreamsConfig,
     resolver: Resolver,
+    adapterRegistry: AdapterRegistry,
     enrichmentRegistry: EnrichmentRegistry,
     tracker: Option[Tracker]
   ): Validation[String, Source] =
-    StdinSource.create(streamsConfig, resolver, enrichmentRegistry, tracker)
+    StdinSource.create(streamsConfig, resolver, adapterRegistry, enrichmentRegistry, tracker)
 
   override val parser: scopt.OptionParser[FileConfig] = localParser
 

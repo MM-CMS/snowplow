@@ -1,4 +1,4 @@
-# Copyright (c) 2012-2017 Snowplow Analytics Ltd. All rights reserved.
+# Copyright (c) 2012-2019 Snowplow Analytics Ltd. All rights reserved.
 #
 # This program is licensed to you under the Apache License Version 2.0,
 # and you may not use this file except in compliance with the Apache License Version 2.0.
@@ -10,7 +10,7 @@
 # See the Apache License Version 2.0 for the specific language governing permissions and limitations there under.
 
 # Author::    Ben Fradet (mailto:support@snowplowanalytics.com)
-# Copyright:: Copyright (c) 2012-2017 Snowplow Analytics Ltd
+# Copyright:: Copyright (c) 2012-2019 Snowplow Analytics Ltd
 # License::   Apache License Version 2.0
 
 require 'contracts'
@@ -62,6 +62,7 @@ module Snowplow
               "core" => {
                 "type" => config[:aws][:emr][:jobflow][:core_instance_type],
                 "count" => config[:aws][:emr][:jobflow][:core_instance_count],
+                "bid" => config[:aws][:emr][:jobflow][:core_instance_bid].to_s,
                 "ebsConfiguration" =>
                   get_ebs_configuration(config[:aws][:emr][:jobflow][:core_instance_ebs])
               },

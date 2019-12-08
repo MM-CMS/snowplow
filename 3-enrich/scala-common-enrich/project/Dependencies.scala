@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2018 Snowplow Analytics Ltd. All rights reserved.
+ * Copyright (c) 2012-2019 Snowplow Analytics Ltd. All rights reserved.
  *
  * This program is licensed to you under the Apache License Version 2.0,
  * and you may not use this file except in compliance with the Apache License Version 2.0.
@@ -48,12 +48,15 @@ object Dependencies {
     val mysqlConnector   = "5.1.39"
     val jaywayJsonpath   = "2.4.0"
     val iabClient        = "0.1.0"
+    val yauaa            = "5.8"
+    val kryo             = "2.24.0"
+    val guava            = "28.1-jre" //used only for InetAddress (because it doesn't do dns lookup)
     // Scala
     val scalaz7          = "7.0.9"
     val snowplowRawEvent = "0.1.0"
     val collectorPayload = "0.0.0"
     val schemaSniffer    = "0.0.0"
-    val refererParser    = "0.3.0"
+    val refererParser    = "0.3.1"
     val maxmindIplookups = "0.4.0"
     val json4s           = "3.2.11"
     val igluClient       = "0.5.0"
@@ -61,7 +64,7 @@ object Dependencies {
     val scalaWeather     = "0.3.0"
     val scalaj           = "2.3.0"
     val gatlingJsonpath  = "0.6.4"
-    val scalaUri         = "0.5.0"
+    val scalaUri         = "1.4.3"
     // Scala (test only)
     val specs2           = "2.3.13"
     val scalazSpecs2     = "0.2"
@@ -87,6 +90,9 @@ object Dependencies {
     val mysqlConnector   = "mysql"                      %  "mysql-connector-java"          % V.mysqlConnector
     val jaywayJsonpath   = "com.jayway.jsonpath"        %  "json-path"                     % V.jaywayJsonpath
     val iabClient        = "com.snowplowanalytics"      %  "iab-spiders-and-robots-client" % V.iabClient
+    val yauaa            = "nl.basjes.parse.useragent"  %  "yauaa"                         % V.yauaa
+    val kryo             = "com.esotericsoftware.kryo"  %  "kryo"                          % V.kryo
+    val guava            = "com.google.guava"           %  "guava"                         % V.guava
 
     // Scala
     val scalaForex       = "com.snowplowanalytics"      %% "scala-forex"                   % V.scalaForex

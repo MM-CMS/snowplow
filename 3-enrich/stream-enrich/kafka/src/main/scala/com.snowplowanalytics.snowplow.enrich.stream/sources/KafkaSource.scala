@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2018 Snowplow Analytics Ltd.
+ * Copyright (c) 2013-2019 Snowplow Analytics Ltd.
  * All rights reserved.
  *
  * This program is licensed to you under the Apache License Version 2.0,
@@ -25,12 +25,11 @@ package sources
 import java.util.Properties
 
 import scala.collection.JavaConverters._
-
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.clients.producer._
 import scalaz._
 import Scalaz._
-
+import common.adapters.AdapterRegistry
 import common.enrichments.EnrichmentRegistry
 import iglu.client.Resolver
 import model.{Kafka, StreamsConfig}
@@ -42,6 +41,7 @@ object KafkaSource {
   def create(
     config: StreamsConfig,
     igluResolver: Resolver,
+    adapterRegistry: AdapterRegistry,
     enrichmentRegistry: EnrichmentRegistry,
     tracker: Option[Tracker]
   ): Validation[String, KafkaSource] = for {
@@ -63,7 +63,7 @@ object KafkaSource {
     badProducer <- KafkaSink
       .validateAndCreateProducer(kafkaConfig, config.buffer, config.out.bad)
       .validation
-  } yield new KafkaSource(goodProducer, piiProducer, badProducer, igluResolver, enrichmentRegistry, tracker, config, kafkaConfig)
+  } yield new KafkaSource(goodProducer, piiProducer, badProducer, igluResolver, adapterRegistry, enrichmentRegistry, tracker, config, kafkaConfig)
 }
 
 /** Source to read events from a Kafka topic */
@@ -72,11 +72,12 @@ class KafkaSource private (
   piiProducer: Option[KafkaProducer[String, String]],
   badProducer: KafkaProducer[String, String],
   igluResolver: Resolver,
+  adapterRegistry: AdapterRegistry,
   enrichmentRegistry: EnrichmentRegistry,
   tracker: Option[Tracker],
   config: StreamsConfig,
   kafkaConfig: Kafka
-) extends Source(igluResolver, enrichmentRegistry, tracker, config.out.partitionKey) {
+) extends Source(igluResolver, adapterRegistry, enrichmentRegistry, tracker, config.out.partitionKey) {
 
   override val MaxRecordSize = None
 
@@ -119,6 +120,7 @@ class KafkaSource private (
     brokers: String,
     groupId: String): KafkaConsumer[String, Array[Byte]] = {
     val properties = createProperties(brokers, groupId)
+    properties.putAll(kafkaConfig.consumerConf.getOrElse(Map()).asJava)
     new KafkaConsumer[String, Array[Byte]](properties)
   }
 

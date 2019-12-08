@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2018 Snowplow Analytics Ltd.
+ * Copyright (c) 2013-2019 Snowplow Analytics Ltd.
  * All rights reserved.
  *
  * This program is licensed to you under the Apache License Version 2.0,
@@ -65,7 +65,12 @@ object model {
       case _                 => s"https://kinesis.$region.amazonaws.com"
     })
   }
-  final case class Kafka(brokers: String, retries: Int) extends SourceSinkConfig
+  final case class Kafka(
+    brokers: String,
+    retries: Int,
+    consumerConf: Option[Map[String,String]],
+    producerConf: Option[Map[String,String]]
+  ) extends SourceSinkConfig
   final case class Nsq(
     rawChannel: String,
     host: String,
@@ -82,8 +87,16 @@ object model {
     appId: String,
     method: String
   )
+  final case class RemoteAdapterConfig(
+    vendor: String,
+    version: String,
+    connectionTimeout: Option[Long],
+    readTimeout: Option[Long],
+    url: String
+  )
   final case class EnrichConfig(
     streams: StreamsConfig,
+    remoteAdapters: Option[List[RemoteAdapterConfig]],
     monitoring: Option[MonitoringConfig]
   )
 }

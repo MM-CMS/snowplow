@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2018 Snowplow Analytics Ltd. All rights reserved.
+ * Copyright (c) 2012-2019 Snowplow Analytics Ltd. All rights reserved.
  *
  * This program is licensed to you under the Apache License Version 2.0,
  * and you may not use this file except in compliance with the Apache License Version 2.0.
@@ -46,6 +46,7 @@ import com.hadoop.compression.lzo.{LzoCodec, LzopCodec}
 
 // Snowplow
 import common.{EtlPipeline, FatalEtlError, ValidatedEnrichedEvent}
+import common.adapters.AdapterRegistry
 import common.loaders.{Loader, ThriftLoader}
 import common.outputs.{BadRow, EnrichedEvent}
 
@@ -90,7 +91,7 @@ object EnrichJob extends SparkJob {
 
   def apply(spark: SparkSession, args: Array[String]) = new EnrichJob(spark, args)
 
-  val etlVersion = s"spark-${generated.ProjectSettings.version}"
+  val etlVersion = s"spark-${generated.BuildInfo.version}"
 
   /**
    * Project our Failures into a List of Nel of strings.
@@ -116,10 +117,12 @@ object EnrichJob extends SparkJob {
    */
   def enrich(line: Any, config: ParsedEnrichJobConfig): (Any, List[ValidatedEnrichedEvent]) = {
     import singleton._
-    val registry = RegistrySingleton.get(config.igluConfig, config.enrichments, config.local)
+    val adapterRegistry = new AdapterRegistry
+    val enrichmentRegistry = RegistrySingleton.get(config.igluConfig, config.enrichments, config.local)
     val loader   = LoaderSingleton.get(config.inFormat).asInstanceOf[Loader[Any]]
     val event = EtlPipeline.processEvents(
-      registry,
+      adapterRegistry,
+      enrichmentRegistry,
       etlVersion,
       config.etlTstamp,
       loader.toCollectorPayload(line))(ResolverSingleton.get(config.igluConfig))

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2018 Snowplow Analytics Ltd. All rights reserved.
+ * Copyright (c) 2012-2019 Snowplow Analytics Ltd. All rights reserved.
  *
  * This program is licensed to you under the Apache License Version 2.0,
  * and you may not use this file except in compliance with the Apache License Version 2.0.
@@ -58,6 +58,19 @@ class IpLookupsEnrichmentSpec extends Specification with DataTables with Validat
       "invalid IP address #1" !! "localhost" ! Some(Failure("AddressNotFoundException")) |
       "invalid IP address #2" !! "hello" ! Some(Failure("UnknownHostException")) |
       "valid IP address"      !! "175.16.199.0" !
+        IpLocation( // Taken from scala-maxmind-geoip. See that test suite for other valid IP addresses
+          countryCode = "CN",
+          countryName = "China",
+          region      = Some("22"),
+          city        = Some("Changchun"),
+          latitude    = 43.88F,
+          longitude   = 125.3228F,
+          timezone    = Some("Asia/Harbin"),
+          postalCode  = None,
+          metroCode   = None,
+          regionName  = Some("Jilin Sheng")
+        ).success.some |
+      "valid IP address with port" !! "175.16.199.0:8080" !
         IpLocation( // Taken from scala-maxmind-geoip. See that test suite for other valid IP addresses
           countryCode = "CN",
           countryName = "China",

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2018 Snowplow Analytics Ltd. All rights reserved.
+ * Copyright (c) 2013-2019 Snowplow Analytics Ltd. All rights reserved.
  *
  * This program is licensed to you under the Apache License Version 2.0, and
  * you may not use this file except in compliance with the Apache License
@@ -14,11 +14,11 @@
  */
 package com.snowplowanalytics.snowplow.collectors.scalastream
 
-import akka.http.scaladsl.model.{ContentType, HttpResponse, StatusCode, StatusCodes}
-import akka.http.scaladsl.model.headers.{HttpCookie, HttpCookiePair}
+import akka.http.scaladsl.model._
+import akka.http.scaladsl.model.headers.HttpCookiePair
 import akka.http.scaladsl.server.{Directive1, Route}
 import akka.http.scaladsl.server.Directives._
-
+import com.snowplowanalytics.snowplow.collectors.scalastream.model.DntCookieMatcher
 import monitoring.BeanRegistry
 
 trait CollectorRoute {
@@ -33,7 +33,15 @@ trait CollectorRoute {
   def extractContentType: Directive1[ContentType] =
     extractRequestContext.map(_.request.entity.contentType)
 
-  def collectorRoute: Route =
+  def collectorRoute =
+    if (collectorService.enableDefaultRedirect) routes else rejectRedirect ~ routes
+
+  def rejectRedirect: Route =
+    path("r" / Segment) { _ =>
+      complete(StatusCodes.NotFound -> "redirects disabled")
+    }
+
+  def routes: Route =
     doNotTrack(collectorService.doNotTrackCookie) { dnt =>
       cookieIfWanted(collectorService.cookieName) { reqCookie =>
         val cookie = reqCookie.map(_.toCookie)
@@ -42,7 +50,7 @@ trait CollectorRoute {
           extractors { (host, ip, request) =>
             // get the adapter vendor and version from the path
             path(Segment / Segment) { (vendor, version) =>
-              val path = s"/$vendor/$version"
+              val path = collectorService.determinePath(vendor, version)
               post {
                 extractContentType { ct =>
                   entity(as[String]) { body =>
@@ -131,12 +139,12 @@ trait CollectorRoute {
 
   /**
    * Directive to filter requests which contain a do not track cookie
-   * @param configCookie the configured do not track cookie to check against
+   * @param cookieMatcher the configured do not track cookie to check against
    */
-  def doNotTrack(configCookie: Option[HttpCookie]): Directive1[Boolean] =
-    cookieIfWanted(configCookie.map(_.name)).map { c =>
-      (c, configCookie) match {
-        case (Some(actual), Some(config)) => actual.value == config.value
+  def doNotTrack(cookieMatcher: Option[DntCookieMatcher]): Directive1[Boolean] =
+    cookieIfWanted(cookieMatcher.map(_.name)).map { c =>
+      (c, cookieMatcher) match {
+        case (Some(actual), Some(config)) => config.matches(actual)
         case _ => false
       }
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2018 Snowplow Analytics Ltd.
+ * Copyright (c) 2013-2019 Snowplow Analytics Ltd.
  * All rights reserved.
  *
  * This program is licensed to you under the Apache License Version 2.0,
@@ -24,8 +24,9 @@ package stream
 import java.io.File
 import java.net.URI
 
+import com.snowplowanalytics.snowplow.enrich.common.adapters.AdapterRegistry
+import common.adapters.registry.RemoteAdapter
 import scalaz.{Sink => _, Source => _, _}
-
 import common.enrichments.EnrichmentRegistry
 import config.FileConfig
 import iglu.client.Resolver
@@ -41,11 +42,12 @@ object NsqEnrich extends Enrich {
   override def getSource(
     streamsConfig: StreamsConfig,
     resolver: Resolver,
+    adapterRegistry: AdapterRegistry,
     enrichmentRegistry: EnrichmentRegistry,
     tracker: Option[Tracker]
   ): Validation[String, Source] =
     NsqSource
-      .create(streamsConfig, resolver, enrichmentRegistry, tracker)
+      .create(streamsConfig, resolver, adapterRegistry, enrichmentRegistry, tracker)
       .leftMap(_.getMessage)
 
   override val parser: scopt.OptionParser[FileConfig] = localParser

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2018 Snowplow Analytics Ltd.
+ * Copyright (c) 2013-2019 Snowplow Analytics Ltd.
  * All rights reserved.
  *
  * This program is licensed to you under the Apache License Version 2.0,
@@ -25,13 +25,12 @@ package sources
 
 import scalaz._
 import Scalaz._
-
 import client.nsq.lookup.DefaultNSQLookup
 import client.nsq.{NSQConfig, NSQConsumer, NSQMessage, NSQProducer}
 import client.nsq.callbacks.NSQMessageCallback
 import client.nsq.callbacks.NSQErrorCallback
 import client.nsq.exceptions.NSQException
-
+import common.adapters.AdapterRegistry
 import iglu.client.Resolver
 import common.enrichments.EnrichmentRegistry
 import model.{Nsq, StreamsConfig}
@@ -43,6 +42,7 @@ object NsqSource {
   def create(
     config: StreamsConfig,
     igluResolver: Resolver,
+    adapterRegistry: AdapterRegistry,
     enrichmentRegistry: EnrichmentRegistry,
     tracker: Option[Tracker]
   ): Validation[Throwable, NsqSource] =
@@ -70,6 +70,7 @@ object NsqSource {
         piiProducer,
         badProducer,
         igluResolver,
+        adapterRegistry,
         enrichmentRegistry,
         tracker,
         config,
@@ -82,11 +83,12 @@ class NsqSource private (
   piiProducer: Option[NSQProducer],
   badProducer: NSQProducer,
   igluResolver: Resolver,
+  adapterRegistry: AdapterRegistry,
   enrichmentRegistry: EnrichmentRegistry,
   tracker: Option[Tracker],
   config: StreamsConfig,
   nsqConfig: Nsq
-) extends Source(igluResolver, enrichmentRegistry, tracker, config.out.partitionKey) {
+) extends Source(igluResolver, adapterRegistry, enrichmentRegistry, tracker, config.out.partitionKey) {
 
   override val MaxRecordSize = None
 

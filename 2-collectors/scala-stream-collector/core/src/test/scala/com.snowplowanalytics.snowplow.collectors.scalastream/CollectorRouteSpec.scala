@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2018 Snowplow Analytics Ltd. All rights reserved.
+ * Copyright (c) 2013-2019 Snowplow Analytics Ltd. All rights reserved.
  *
  * This program is licensed to you under the Apache License Version 2.0, and
  * you may not use this file except in compliance with the Apache License
@@ -18,10 +18,11 @@ import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers._
 import akka.http.scaladsl.testkit.Specs2RouteTest
 import akka.http.scaladsl.server.Directives._
+import com.snowplowanalytics.snowplow.collectors.scalastream.model.DntCookieMatcher
 import org.specs2.mutable.Specification
 
 class CollectorRouteSpec extends Specification with Specs2RouteTest {
-  val route = new CollectorRoute {
+  val mkRoute = (withRedirects: Boolean) => new CollectorRoute {
     override val collectorService = new Service {
       def preflightResponse(req: HttpRequest): HttpResponse =
         HttpResponse(200, entity = "preflight response")
@@ -42,9 +43,13 @@ class CollectorRouteSpec extends Specification with Specs2RouteTest {
         contentType: Option[ContentType] = None
       ): (HttpResponse, List[Array[Byte]]) = (HttpResponse(200, entity = s"cookie"), List.empty)
       def cookieName: Option[String] = Some("name")
-      def doNotTrackCookie: Option[HttpCookie] = None
+      def doNotTrackCookie: Option[DntCookieMatcher] = None
+      def determinePath(vendor: String, version: String): String = "/p1/p2"
+      def enableDefaultRedirect = withRedirects
     }
   }
+  val route = mkRoute(true)
+  val routeWithoutRedirects = mkRoute(false)
 
   "The collector route" should {
     "respond to the cors route with a preflight response" in {
@@ -98,6 +103,11 @@ class CollectorRouteSpec extends Specification with Specs2RouteTest {
         responseAs[String] shouldEqual "200 collector root"
       }
     }
+    "disallow redirect routes when redirects disabled" in {
+      Get("/r/abc") ~> routeWithoutRedirects.collectorRoute ~> check {
+        responseAs[String] shouldEqual "redirects disabled"
+      }
+    }
     "respond to anything else with a not found" in {
       Get("/something") ~> route.collectorRoute ~> check {
         responseAs[String] shouldEqual "404 not found"
@@ -145,7 +155,7 @@ class CollectorRouteSpec extends Specification with Specs2RouteTest {
       }
       "return false if the dnt cookie doesn't have the same value compared to configuration" in {
         Get() ~> Cookie("abc" -> "123") ~>
-          route.doNotTrack(Some(HttpCookie(name = "abc", value = "345"))) { dnt =>
+          route.doNotTrack(Some(DntCookieMatcher(name = "abc", value = "345"))) { dnt =>
             complete(dnt.toString)
           } ~> check {
             responseAs[String] shouldEqual "false"
@@ -153,11 +163,19 @@ class CollectorRouteSpec extends Specification with Specs2RouteTest {
       }
       "return true if there is a properly-valued dnt cookie" in {
         Get() ~> Cookie("abc" -> "123") ~>
-          route.doNotTrack(Some(HttpCookie(name = "abc", value = "123"))) { dnt =>
+          route.doNotTrack(Some(DntCookieMatcher(name = "abc", value = "123"))) { dnt =>
             complete(dnt.toString)
           } ~> check {
             responseAs[String] shouldEqual "true"
           }
+      }
+      "return true if there is a properly-valued dnt cookie that matches a regex value" in {
+        Get() ~> Cookie("abc" -> s"deleted-${System.currentTimeMillis()}") ~>
+          route.doNotTrack(Some(DntCookieMatcher(name = "abc", value = "deleted-[0-9]+"))) { dnt =>
+            complete(dnt.toString)
+          } ~> check {
+          responseAs[String] shouldEqual "true"
+        }
       }
     }
   }

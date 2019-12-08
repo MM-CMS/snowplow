@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2018 Snowplow Analytics Ltd. All rights reserved.
+ * Copyright (c) 2012-2019 Snowplow Analytics Ltd. All rights reserved.
  *
  * This program is licensed to you under the Apache License Version 2.0,
  * and you may not use this file except in compliance with the Apache License Version 2.0.
@@ -72,8 +72,12 @@ object EventFingerprintEnrichmentConfig extends ParseableEnrichment {
    * @return A hashing algorithm
    */
   private[registry] def getAlgorithm(algorithmName: String): ValidatedMessage[String => String] = algorithmName match {
-    case "MD5" => ((s: String) => DigestUtils.md5Hex(s)).success
-    case other => s"[$other] is not a supported event fingerprint generation algorithm".toProcessingMessage.fail
+    case "MD5"    => ((s: String) => DigestUtils.md5Hex(s)).success
+    case "SHA1"   => ((s: String) => DigestUtils.sha1Hex(s)).success
+    case "SHA256" => ((s: String) => DigestUtils.sha256Hex(s)).success
+    case "SHA384" => ((s: String) => DigestUtils.sha384Hex(s)).success
+    case "SHA512" => ((s: String) => DigestUtils.sha512Hex(s)).success
+    case other    => s"[$other] is not a supported event fingerprint generation algorithm".toProcessingMessage.fail
   }
 
 }

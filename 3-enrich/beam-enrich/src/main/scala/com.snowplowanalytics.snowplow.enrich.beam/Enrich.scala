@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2018 Snowplow Analytics Ltd. All rights reserved.
+ * Copyright (c) 2012-2019 Snowplow Analytics Ltd. All rights reserved.
  *
  * This program is licensed to you under the Apache License Version 2.0,
  * and you may not use this file except in compliance with the Apache License Version 2.0.
@@ -31,6 +31,7 @@ import scalaz._
 import Scalaz._
 
 import common.EtlPipeline
+import common.adapters.AdapterRegistry
 import common.enrichments.EnrichmentRegistry
 import common.loaders.ThriftLoader
 import common.outputs.{EnrichedEvent, BadRow}
@@ -202,6 +203,7 @@ object Enrich {
       implicit r: Resolver): List[Validation[BadRow, EnrichedEvent]] = {
     val collectorPayload = ThriftLoader.toCollectorPayload(data)
     val processedEvents = EtlPipeline.processEvents(
+      new AdapterRegistry,
       enrichmentRegistry,
       s"beam-enrich-${generated.BuildInfo.version}",
       new DateTime(System.currentTimeMillis),

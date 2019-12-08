@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2018 Snowplow Analytics Ltd. All rights reserved.
+ * Copyright (c) 2012-2019 Snowplow Analytics Ltd. All rights reserved.
  *
  * This program is licensed to you under the Apache License Version 2.0,
  * and you may not use this file except in compliance with the Apache License Version 2.0.
@@ -170,11 +170,14 @@ case class IpLookupsEnrichment(
 
   /**
    * Extract the geo-location using the client IP address.
+   * If the IPv4 contains a port, it is removed before performing the lookup.
    *
    * @param geo The IpGeo lookup engine we will use to lookup the client's IP address
    * @param ip The client's IP address to use to lookup the client's geo-location
    * @return an IpLookupResult
    */
-  def extractIpInformation(ip: String): IpLookupResult =
-    ipLookups.performLookups(ip)
+  def extractIpInformation(ip: String): IpLookupResult = ip match {
+    case EnrichmentManager.IPv4Regex(ipv4WithoutPort) => ipLookups.performLookups(ipv4WithoutPort)
+    case _                                            => ipLookups.performLookups(ip)
+  }
 }
